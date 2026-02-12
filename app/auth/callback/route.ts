@@ -1,33 +1,15 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get('code');
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
 
   if (code) {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name: string, options) {
-            cookieStore.set({ name, value: '', ...options });
-          },
-        },
-      }
-    );
-    await supabase.auth.exchangeCodeForSession(code);
+    const supabase = await createSupabaseServerClient()
+    await supabase.auth.exchangeCodeForSession(code)
   }
 
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL('/protected', request.url));
+  return NextResponse.redirect(`${origin}/protected`)
 }
+

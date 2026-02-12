@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -8,23 +8,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing environment variables for Supabase')
 }
 
-export function createServerClient(
-  componentContext: 'route_handler' | 'page_server' = 'page_server'
-) {
-  return createServerClient(supabaseUrl!, supabaseAnonKey!, {
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies()
+
+  return createServerClient(supabaseUrl!, supabaseAnonKey!, {   // ✅ FIX
     cookies: {
-      get(name: string) {
-        switch (componentContext) {
-          case 'page_server':
-          case 'route_handler':
-            return cookies().get(name)?.value
-        }
+      getAll() {
+        return cookieStore.getAll()
       },
-      set(name: string, value: string, options: CookieOptions) {
-        cookies().set(name, value, options)
-      },
-      remove(name: string, options: CookieOptions) {
-        cookies().set(name, '', options)
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options)
+        })
       },
     },
   })
