@@ -1,22 +1,230 @@
-import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
+import FilterBar from '@/components/FilterBar';
 
-export default async function ProtectedPage() {
-  const supabase = await createSupabaseServerClient()
+// TypeScript Interfaces
+interface University {
+  university_id: string;
+  university_name: string;
+}
+
+interface Profile {
+  profile_id: string;
+  email: string;
+  // other profile fields
+}
+
+interface ProfileUniversityMapping {
+  profile_id: string;
+  university_id: string;
+}
+
+interface Community {
+  community_id: string;
+  community_name: string;
+  university_id: string;
+}
+
+interface CommunityContextTag {
+  tag_id: string;
+  tag_name: string;
+}
+
+interface CommunityContext {
+  context_id: string;
+  community_id: string;
+  context_title: string;
+  context_content: string;
+  start_datetime_utc: string;
+  end_datetime_utc: string;
+  priority: number;
+  created_datetime_utc: string;
+  tags: CommunityContextTag[];
+  community: Community;
+}
+
+interface CommunityContextTagMapping {
+  context_id: string;
+  tag_id: string;
+}
+
+// Helper function to determine status
+function getStatus(start: string, end: string): { text: string; color: string } {
+  const now = new Date();
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+
+  if (now < startDate) {
+    return { text: 'Upcoming', color: 'bg-yellow-100 text-yellow-800' };
+  } else if (now >= startDate && now <= endDate) {
+    // Check if ending soon (e.g., within 24 hours)
+    const timeRemaining = endDate.getTime() - now.getTime();
+    const oneDay = 24 * 60 * 60 * 1000;
+    if (timeRemaining < oneDay) {
+      return { text: 'Ending Soon', color: 'bg-red-100 text-red-800' };
+    }
+    return { text: 'Live', color: 'bg-green-100 text-green-800' };
+  } else {
+    return { text: 'Ended', color: 'bg-gray-100 text-gray-800' };
+  }
+}
+
+// UI Components
+
+function FeedCard({ item }: { item: CommunityContext }) {
+  const status = getStatus(item.start_datetime_utc, item.end_datetime_utc);
+
+  return (
+    <div className="bg-white shadow-md rounded-lg p-4 mb-4">
+      <div className="flex justify-between items-start">
+        <h2 className="text-xl font-bold">{item.context_title}</h2>
+        <div className="flex items-center">
+          <span className={`text-xs font-semibold mr-2 px-2.5 py-0.5 rounded ${status.color}`}>
+            {status.text}
+          </span>
+          <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+            Priority: {item.priority}
+          </span>
+        </div>
+      </div>
+      <p className="text-gray-700 mt-2">{item.context_content}</p>
+      <div className="mt-4">
+        <span className="text-sm text-gray-500">{item.community.community_name}</span>
+        <div className="flex mt-2">
+          {item.tags.map((tag) => (
+            <span
+              key={tag.tag_id}
+              className="bg-gray-200 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded"
+            >
+              {tag.tag_name}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div>
+      <div className="p-4 bg-gray-100 rounded-lg mb-4 h-16 animate-pulse"></div>
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-48 animate-pulse"></div>
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-48 animate-pulse"></div>
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-48 animate-pulse"></div>
+    </div>
+  );
+}
+
+
+export default async function ProtectedPage({
+  searchParams,
+}: {
+  searchParams: { tags?: string };
+}) {
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login')
+    redirect('/auth/login');
   }
 
-  return (
-    <main style={{ padding: '2rem' }}>
-      <h1>Protected</h1>
-      <p>Welcome {user.email}</p>
-    </main>
-  )
-}
+  // 1. Get user's university
+  const { data: profileUniversityMapping, error: profileError } = await supabase
+    .from('profile_university_mappings')
+    .select('university_id')
+    .eq('profile_id', user.id)
+    .single();
 
+  if (profileError || !profileUniversityMapping) {
+    // Handle error or case where user has no university
+    return (
+      <div>
+        <h1>Community Context Feed</h1>
+        <p>Could not determine your community. Please contact support.</p>
+      </div>
+    );
+  }
+
+  const userUniversityId = profileUniversityMapping.university_id;
+
+  // 2. Fetch community contexts
+  const now = new Date().toISOString();
+  let query = supabase
+    .from('community_contexts')
+    .select(
+      `
+      *,
+      community:communities(*),
+      tags:community_context_tags(*)
+    `
+    )
+    .lte('start_datetime_utc', now)
+    .gte('end_datetime_utc', now)
+    .order('priority', { ascending: false })
+    .order('created_datetime_utc', { ascending: false });
+
+  // Filter by community
+  // This is a placeholder, as Supabase JS client doesn't directly support this kind of subquery in .in()
+  // A real implementation would likely use a database function or a more complex query.
+  const { data: communities } = await supabase
+    .from('communities')
+    .select('community_id')
+    .eq('university_id', userUniversityId);
+  
+  if (communities) {
+    query = query.in('community_id', communities.map(c => c.community_id));
+  }
+
+
+  // Filter by tags if provided
+  if (searchParams.tags) {
+    const tags = searchParams.tags.split(',');
+    // This is also a placeholder for the same reason as above
+    const { data: contextsWithTags } = await supabase
+      .from('community_context_tag_mappings')
+      .select('context_id')
+      .in('tag_id', tags);
+
+    if (contextsWithTags) {
+      query = query.in('context_id', contextsWithTags.map(c => c.context_id));
+    }
+  }
+
+  const { data: feed, error: feedError } = await query;
+
+  if (feedError) {
+    // Handle error
+    return (
+      <div>
+        <h1>Community Context Feed</h1>
+        <p>Error fetching feed. Please try again later.</p>
+      </div>
+    );
+  }
+
+
+  return (
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-4">Community Context Feed</h1>
+      <FilterBar />
+      <Suspense fallback={<LoadingSkeleton />}>
+        {feed && feed.length > 0 ? (
+          <div>
+            {feed.map((item) => (
+              <FeedCard key={item.context_id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <p className="text-gray-500">Nothing happening in your community right now.</p>
+          </div>
+        )}
+      </Suspense>
+    </div>
+  );
+}
