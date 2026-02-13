@@ -45,9 +45,7 @@ export default function Sidebar() {
         <Link href="/captions" className="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100">
           Captions List
         </Link>
-        <Link href="/protected" className="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-          Protected
-        </Link>
+
       </nav>
       <div className="p-4 border-t border-gray-200">
         {user ? (
