@@ -3,20 +3,33 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { FcGoogle } from 'react-icons/fc';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 export default function LoginPage() {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+  const [error, setError] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
+    setError(null);
+    console.log('handleGoogleLogin called');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        console.error('Error logging in:', error);
+        setError(error.message);
+      }
+    } catch (error: any) {
+      console.error('Error in handleGoogleLogin:', error);
+      setError(error.message || 'An unexpected error occurred.');
+    }
   };
 
   return (
@@ -30,6 +43,7 @@ export default function LoginPage() {
           <FcGoogle className="w-6 h-6 mr-2" />
           <span>Sign in with Google</span>
         </Button>
+        {error && <p className="text-red-500 mt-4">{error}</p>}
       </div>
     </div>
   );
