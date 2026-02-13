@@ -4,23 +4,22 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client'; // Corrected import
 
-interface CommunityContextTag {
-    tag_id: string;
-    tag_name: string;
+interface Tag {
+    id: string;
+    name: string;
 }
 
 export default function FilterBar() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    // const supabase = createSupabaseBrowserClient(); // Removed this line
 
-    const [availableTags, setAvailableTags] = useState<CommunityContextTag[]>([]);
+    const [availableTags, setAvailableTags] = useState<Tag[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     useEffect(() => {
         // Fetch all available tags
         const fetchTags = async () => {
-            const { data, error } = await supabase.from('community_context_tags').select('*');
+            const { data, error } = await supabase.from('tags').select('id, name');
             if (data) {
                 setAvailableTags(data);
             }
@@ -29,7 +28,7 @@ export default function FilterBar() {
             }
         };
         fetchTags();
-    }, []); // Removed supabase from dependency array as it's a global instance
+    }, []);
 
     useEffect(() => {
         // Initialize selected tags from URL
@@ -64,15 +63,15 @@ export default function FilterBar() {
             <span className="font-semibold mr-2">Filter by Tags:</span>
             {availableTags.map((tag) => (
                 <button
-                    key={tag.tag_id}
-                    onClick={() => handleTagChange(tag.tag_id)}
+                    key={tag.id}
+                    onClick={() => handleTagChange(tag.id)}
                     className={`px-3 py-1 rounded-full text-sm ${
-                        selectedTags.includes(tag.tag_id)
+                        selectedTags.includes(tag.id)
                             ? 'bg-blue-500 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                 >
-                    {tag.tag_name}
+                    {tag.name}
                 </button>
             ))}
         </div>

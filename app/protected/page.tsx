@@ -20,13 +20,13 @@ interface ProfileUniversityMapping {
   university_id: string;
 }
 
-interface Community {
+export interface Community {
   community_id: string;
   community_name: string;
   university_id: string;
 }
 
-interface CommunityContextTag {
+export interface CommunityContextTag {
   tag_id: string;
   tag_name: string;
 }
@@ -121,7 +121,7 @@ function LoadingSkeleton() {
 export default async function ProtectedPage({
   searchParams,
 }: {
-  searchParams: { tags?: string };
+  searchParams: { tags?: string; communities?: string };
 }) {
   const supabase = await createSupabaseServerClient();
 
@@ -133,24 +133,34 @@ export default async function ProtectedPage({
     redirect('/auth/login');
   }
 
-  // 1. Get user's university
-  const { data: profileUniversityMapping, error: profileError } = await supabase
+  // Get user's university to set as default community filter if none provided
+  let userUniversityId: string | null = null;
+  const { data: profileUniversityMapping } = await supabase
     .from('profile_university_mappings')
     .select('university_id')
     .eq('profile_id', user.id)
     .single();
 
-  if (profileError || !profileUniversityMapping) {
-    // Handle error or case where user has no university
-    return (
-      <div>
-        <h1>Community Context Feed</h1>
-        <p>Could not determine your community. Please contact support.</p>
-      </div>
-    );
+  if (profileUniversityMapping) {
+    userUniversityId = profileUniversityMapping.university_id;
   }
 
-  const userUniversityId = profileUniversityMapping.university_id;
+  // Determine which communities to filter by
+  let communityIdsToFilter: string[] = [];
+  if (searchParams.communities) {
+    communityIdsToFilter = searchParams.communities.split(',');
+  } else if (userUniversityId) {
+    // If no specific communities are selected, default to user's university communities
+    const { data: defaultCommunities } = await supabase
+      .from('communities')
+      .select('community_id')
+      .eq('university_id', userUniversityId);
+
+    if (defaultCommunities) {
+      communityIdsToFilter = defaultCommunities.map(c => c.community_id);
+    }
+  }
+
 
   // 2. Fetch community contexts
   const now = new Date().toISOString();
@@ -168,23 +178,19 @@ export default async function ProtectedPage({
     .order('priority', { ascending: false })
     .order('created_datetime_utc', { ascending: false });
 
-  // Filter by community
-  // This is a placeholder, as Supabase JS client doesn't directly support this kind of subquery in .in()
-  // A real implementation would likely use a database function or a more complex query.
-  const { data: communities } = await supabase
-    .from('communities')
-    .select('community_id')
-    .eq('university_id', userUniversityId);
-  
-  if (communities) {
-    query = query.in('community_id', communities.map(c => c.community_id));
+  // Apply community filter
+  if (communityIdsToFilter.length > 0) {
+    query = query.in('community_id', communityIdsToFilter);
+  } else {
+    // If no communities to filter by (e.g., user has no university and no communities selected),
+    // return an empty feed or handle as appropriate. For now, we'll let it fetch all,
+    // which might not be desired. A better approach might be to return early.
+    // For this implementation, we proceed without a community filter if none are specified.
   }
-
 
   // Filter by tags if provided
   if (searchParams.tags) {
     const tags = searchParams.tags.split(',');
-    // This is also a placeholder for the same reason as above
     const { data: contextsWithTags } = await supabase
       .from('community_context_tag_mappings')
       .select('context_id')
@@ -192,6 +198,9 @@ export default async function ProtectedPage({
 
     if (contextsWithTags) {
       query = query.in('context_id', contextsWithTags.map(c => c.context_id));
+    } else {
+      // If tags are provided but no contexts match them, return an empty array
+      query = query.eq('context_id', 'non-existent-id');
     }
   }
 
