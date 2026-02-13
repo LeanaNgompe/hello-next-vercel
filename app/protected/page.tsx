@@ -212,6 +212,7 @@ export default async function ProtectedPage({
       <div>
         <h1>Community Context Feed</h1>
         <p>Error fetching feed. Please try again later.</p>
+        {feedError.message && <p className="text-red-500">Error details: {feedError.message}</p>}
       </div>
     );
   }
