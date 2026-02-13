@@ -21,7 +21,7 @@ interface ProfileUniversityMapping {
 }
 
 export interface Community {
-  community_id: string;
+  community_id: number;
   community_name: string;
   university_id: string;
 }
@@ -33,7 +33,7 @@ export interface Tag {
 
 interface CommunityContext {
   context_id: string;
-  community_id: string;
+  community_id: number;
   context_title: string;
   context_content: string;
   start_datetime_utc: string;
@@ -146,9 +146,9 @@ export default async function ProtectedPage({
   }
 
   // Determine which communities to filter by
-  let communityIdsToFilter: string[] = [];
+  let communityIdsToFilter: number[] = [];
   if (searchParams.communities) {
-    communityIdsToFilter = searchParams.communities.split(',');
+    communityIdsToFilter = searchParams.communities.split(',').map(Number);
   } else if (userUniversityId) {
     // If no specific communities are selected, default to user's university communities
     const { data: defaultCommunities } = await supabase
