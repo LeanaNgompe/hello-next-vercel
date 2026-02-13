@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'; // Assuming a client-side supabase client
+import { supabase } from '@/lib/supabase/client'; // Corrected import
 
 interface CommunityContextTag {
     tag_id: string;
@@ -12,7 +12,7 @@ interface CommunityContextTag {
 export default function FilterBar() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const supabase = createSupabaseBrowserClient();
+    // const supabase = createSupabaseBrowserClient(); // Removed this line
 
     const [availableTags, setAvailableTags] = useState<CommunityContextTag[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -29,7 +29,7 @@ export default function FilterBar() {
             }
         };
         fetchTags();
-    }, [supabase]);
+    }, []); // Removed supabase from dependency array as it's a global instance
 
     useEffect(() => {
         // Initialize selected tags from URL
