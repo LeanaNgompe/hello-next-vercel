@@ -1,108 +1,25 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import FilterBar from '@/components/FilterBar';
 
 // TypeScript Interfaces
-interface University {
-  university_id: string;
-  university_name: string;
-}
-
-interface Profile {
-  profile_id: string;
-  email: string;
-  // other profile fields
-}
-
-interface ProfileUniversityMapping {
-  profile_id: string;
-  university_id: string;
-}
-
-export interface Community {
-  id: number;
-  name: string;
-  university_id: string;
-}
-
-export interface Tag {
+interface SidechatPost {
   id: string;
-  name: string;
+  content: string;
+  created_at: string;
+  upvotes: number;
 }
-
-interface CommunityContext {
-  context_id: string;
-  community_id: number;
-  context_title: string;
-  context_content: string;
-  start_datetime_utc: string;
-  end_datetime_utc: string;
-  priority: number;
-  created_datetime_utc: string;
-  community_context_tag_mappings: {
-    community_context_tags: {
-      id: number;
-      name: string;
-    };
-  }[];
-  community: Community;
-}
-
-interface CommunityContextTagMapping {
-  context_id: string;
-  tag_id: string;
-}
-
-// Helper function to determine status
-/*function getStatus(start: string, end: string): { text: string; color: string } {
-  const now = new Date();
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-
-  if (now < startDate) {
-    return { text: 'Upcoming', color: 'bg-yellow-100 text-yellow-800' };
-  } else if (now >= startDate && now <= endDate) {
-    // Check if ending soon (e.g., within 24 hours)
-    const timeRemaining = endDate.getTime() - now.getTime();
-    const oneDay = 24 * 60 * 60 * 1000;
-    if (timeRemaining < oneDay) {
-      return { text: 'Ending Soon', color: 'bg-red-100 text-red-800' };
-    }
-    return { text: 'Live', color: 'bg-green-100 text-green-800' };
-  } else {
-    return { text: 'Ended', color: 'bg-gray-100 text-gray-800' };
-  }
-}*/
 
 // UI Components
-
-function FeedCard({ item }: { item: CommunityContext }) {
-  /*const status = getStatus(item.start_datetime_utc, item.end_datetime_utc);*/
-
+function PostCard({ post }: { post: SidechatPost }) {
   return (
     <div className="bg-white shadow-md rounded-lg p-4 mb-4">
-      <div className="flex justify-between items-start">
-        <h2 className="text-xl font-bold">{item.context_title}</h2>
-        <div className="flex items-center">
-          <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-            Priority: {item.priority}
-          </span>
-        </div>
-      </div>
-      <p className="text-gray-700 mt-2">{item.context_content}</p>
-      <div className="mt-4">
-        <span className="text-sm text-gray-500">{item.community.name}</span>
-        <div className="flex mt-2">
-        {item.community_context_tag_mappings.map((mapping) => (
-          <span
-            key={mapping.community_context_tags.id}
-            className="bg-gray-200 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded"
-          >
-            {mapping.community_context_tags.name}
-          </span>
-        ))}
-        </div>
+      <p className="text-gray-700">{post.content}</p>
+      <div className="mt-4 flex justify-between items-center">
+        <span className="text-sm text-gray-500">
+          {new Date(post.created_at).toLocaleString()}
+        </span>
+        <span className="text-sm text-gray-500">{post.upvotes} upvotes</span>
       </div>
     </div>
   );
@@ -111,22 +28,65 @@ function FeedCard({ item }: { item: CommunityContext }) {
 function LoadingSkeleton() {
   return (
     <div>
-      <div className="p-4 bg-gray-100 rounded-lg mb-4 h-16 animate-pulse"></div>
-      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-48 animate-pulse"></div>
-      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-48 animate-pulse"></div>
-      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-48 animate-pulse"></div>
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-24 animate-pulse"></div>
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-24 animate-pulse"></div>
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-24 animate-pulse"></div>
     </div>
   );
 }
 
-
-export default async function ProtectedPage({
-  searchParams,
-}: {
-  searchParams: { tags?: string; communities?: string };
-}) {
+async function MostRecentPosts() {
   const supabase = await createSupabaseServerClient();
+  const { data: posts, error } = await supabase
+    .from('sidechat_posts')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(10);
 
+  if (error) {
+    console.error('Error fetching most recent posts:', error);
+    return <p className="text-red-500">Error fetching recent posts.</p>;
+  }
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Most Recent Posts</h2>
+      {posts && posts.length > 0 ? (
+        posts.map((post) => <PostCard key={post.id} post={post} />)
+      ) : (
+        <p>No recent posts found.</p>
+      )}
+    </div>
+  );
+}
+
+async function MostPopularPosts() {
+  const supabase = await createSupabaseServerClient();
+  const { data: posts, error } = await supabase
+    .from('sidechat_posts')
+    .select('*')
+    .order('upvotes', { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.error('Error fetching most popular posts:', error);
+    return <p className="text-red-500">Error fetching popular posts.</p>;
+  }
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Most Popular Posts</h2>
+      {posts && posts.length > 0 ? (
+        posts.map((post) => <PostCard key={post.id} post={post} />)
+      ) : (
+        <p>No popular posts found.</p>
+      )}
+    </div>
+  );
+}
+
+export default async function ProtectedPage() {
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -135,142 +95,17 @@ export default async function ProtectedPage({
     redirect('/auth/login');
   }
 
-  // Get user's university to set as default community filter if none provided
-  let userUniversityId: string | null = null;
-  const { data: profileUniversityMapping } = await supabase
-    .from('profile_university_mappings')
-    .select('university_id')
-    .eq('profile_id', user.id)
-    .single();
-
-  if (profileUniversityMapping) {
-    userUniversityId = profileUniversityMapping.university_id;
-  }
-
-  // Determine which communities to filter by
-  let communityIdsToFilter: number[] = [];
-  if (searchParams.communities) {
-    communityIdsToFilter = searchParams.communities.split(',').map(Number);
-  } else {
-    // If no specific communities are selected via search params,
-    // apply email or university-based defaults for logged-in users.
-    if (user) {
-      // Try to find a community based on their email domain
-      if (user.email) {
-        const emailMatch = user.email.match(/@(.+?)\.edu$/);
-        if (emailMatch && emailMatch[1]) {
-          const domainPrefix = emailMatch[1];
-          const { data: emailCommunity } = await supabase
-            .from('communities')
-            .select('id')
-            .ilike('name', domainPrefix)  // case-insensitive
-            .single();
-
-          if (emailCommunity) {
-            communityIdsToFilter = [emailCommunity.id];
-          }
-        }
-      }
-
-      // Fallback to university-based communities if no email community found
-      if (communityIdsToFilter.length === 0 && userUniversityId) {
-        const { data: defaultCommunities } = await supabase
-          .from('communities')
-          .select('id')
-          .eq('university_id', userUniversityId);
-
-        if (defaultCommunities) {
-          communityIdsToFilter = defaultCommunities.map(c => c.id);
-        }
-      }
-    }
-  }
-
-
-  // 2. Fetch community contexts
-  const now = new Date().toISOString();
-  let query = supabase
-    .from('community_contexts')
-    .select(`
-      *,
-      communities:community_id(*),
-      community_context_tag_mappings(
-        community_context_tags(id, name)
-      )
-    `)
-    .order('priority', { ascending: false })
-    .order('created_datetime_utc', { ascending: false });
-
-  // Apply community filter
-  if (communityIdsToFilter.length > 0) {
-    query = query.in('community_id', communityIdsToFilter);
-  } else {
-    // If no communities to filter by (e.g., no searchParams, no email match, and no university match),
-    // return no results.
-    query = query.in('community_id', [-1]); // Effectively return no results
-  }
-
-  // Filter by tags if provided
-  if (searchParams.tags) {
-    const tags = searchParams.tags.split(',');
-    const { data: contextsWithTags } = await supabase
-      .from('community_context_tag_mappings')
-      .select('community_context_id')
-      .in('community_context_tag_id', tags);
-
-    if (contextsWithTags) {
-      query = query.in(
-        'id',
-        contextsWithTags.map(c => c.community_context_id)
-      );
-    } else {
-      // If tags are provided but no contexts match them, return an empty array
-      query = query.eq('context_id', 'non-existent-id');
-    }
-  }
-
-  const { data: feed, error: feedError } = await query;
-
-  if (feedError) {
-    // Handle error
-    console.error('FEED ERROR:', feedError);
-    return (
-      <div>
-        <h1>Community Context Feed</h1>
-        <pre className="text-red-600 text-sm">
-          {JSON.stringify(feedError, null, 2)}
-        </pre>
-      </div>
-    );
-  }
-  const { data: tagsData, error: tagsError } = await supabase
-  .from('community_context_tags')
-  .select('id, name')
-  .order('name');
-
-  if (tagsError) {
-    console.error('Tag fetch error:', tagsError);
-  }
-
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Community Context Feed</h1>
-      <FilterBar tags={tagsData ?? []} />
-      <Suspense fallback={<LoadingSkeleton />}>
-        {feed && feed.length > 0 ? (
-          <div>
-            {feed.map((item) => (
-              <FeedCard key={item.context_id} item={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-10">
-            <p className="text-gray-500">No events found.</p>
-          </div>
-        )}
-      </Suspense>
+      <h1 className="text-3xl font-bold mb-4">Sidechat Feed</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Suspense fallback={<LoadingSkeleton />}>
+          <MostRecentPosts />
+        </Suspense>
+        <Suspense fallback={<LoadingSkeleton />}>
+          <MostPopularPosts />
+        </Suspense>
+      </div>
     </div>
   );
 }
-
-
