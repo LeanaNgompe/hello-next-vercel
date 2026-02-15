@@ -55,7 +55,7 @@ interface CommunityContextTagMapping {
 }
 
 // Helper function to determine status
-function getStatus(start: string, end: string): { text: string; color: string } {
+/*function getStatus(start: string, end: string): { text: string; color: string } {
   const now = new Date();
   const startDate = new Date(start);
   const endDate = new Date(end);
@@ -73,21 +73,18 @@ function getStatus(start: string, end: string): { text: string; color: string } 
   } else {
     return { text: 'Ended', color: 'bg-gray-100 text-gray-800' };
   }
-}
+}*/
 
 // UI Components
 
 function FeedCard({ item }: { item: CommunityContext }) {
-  const status = getStatus(item.start_datetime_utc, item.end_datetime_utc);
+  /*const status = getStatus(item.start_datetime_utc, item.end_datetime_utc);*/
 
   return (
     <div className="bg-white shadow-md rounded-lg p-4 mb-4">
       <div className="flex justify-between items-start">
         <h2 className="text-xl font-bold">{item.context_title}</h2>
         <div className="flex items-center">
-          <span className={`text-xs font-semibold mr-2 px-2.5 py-0.5 rounded ${status.color}`}>
-            {status.text}
-          </span>
           <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
             Priority: {item.priority}
           </span>
