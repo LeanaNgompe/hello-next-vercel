@@ -201,8 +201,6 @@ export default async function ProtectedPage({
         community_context_tags(id, name)
       )
     `)
-    .lte('start_datetime_utc', now)
-    .gte('end_datetime_utc', now)
     .order('priority', { ascending: false })
     .order('created_datetime_utc', { ascending: false });
 
@@ -270,7 +268,7 @@ export default async function ProtectedPage({
           </div>
         ) : (
           <div className="text-center py-10">
-            <p className="text-gray-500">Nothing happening in your community right now.</p>
+            <p className="text-gray-500">No events found.</p>
           </div>
         )}
       </Suspense>
