@@ -149,15 +149,38 @@ export default async function ProtectedPage({
   let communityIdsToFilter: number[] = [];
   if (searchParams.communities) {
     communityIdsToFilter = searchParams.communities.split(',').map(Number);
-  } else if (userUniversityId) {
-    // If no specific communities are selected, default to user's university communities
-    const { data: defaultCommunities } = await supabase
-      .from('communities')
-      .select('community_id')
-      .eq('university_id', userUniversityId);
+  } else {
+    // If no specific communities are selected via search params,
+    // apply email or university-based defaults for logged-in users.
+    if (user) {
+      // Try to find a community based on their email domain
+      if (user.email) {
+        const emailMatch = user.email.match(/@(.+?)\.edu$/);
+        if (emailMatch && emailMatch[1]) {
+          const domainPrefix = emailMatch[1];
+          const { data: emailCommunity } = await supabase
+            .from('communities')
+            .select('community_id') // Correctly select 'community_id'
+            .eq('community_name', domainPrefix)
+            .single();
 
-    if (defaultCommunities) {
-      communityIdsToFilter = defaultCommunities.map(c => c.community_id);
+          if (emailCommunity) {
+            communityIdsToFilter = [emailCommunity.community_id];
+          }
+        }
+      }
+
+      // Fallback to university-based communities if no email community found
+      if (communityIdsToFilter.length === 0 && userUniversityId) {
+        const { data: defaultCommunities } = await supabase
+          .from('communities')
+          .select('community_id')
+          .eq('university_id', userUniversityId);
+
+        if (defaultCommunities) {
+          communityIdsToFilter = defaultCommunities.map(c => c.community_id);
+        }
+      }
     }
   }
 
@@ -182,10 +205,9 @@ export default async function ProtectedPage({
   if (communityIdsToFilter.length > 0) {
     query = query.in('community_id', communityIdsToFilter);
   } else {
-    // If no communities to filter by (e.g., user has no university and no communities selected),
-    // return an empty feed or handle as appropriate. For now, we'll let it fetch all,
-    // which might not be desired. A better approach might be to return early.
-    // For this implementation, we proceed without a community filter if none are specified.
+    // If no communities to filter by (e.g., no searchParams, no email match, and no university match),
+    // return no results.
+    query = query.in('community_id', [-1]); // Effectively return no results
   }
 
   // Filter by tags if provided
@@ -208,10 +230,13 @@ export default async function ProtectedPage({
 
   if (feedError) {
     // Handle error
+    console.error('FEED ERROR:', feedError);
     return (
       <div>
         <h1>Community Context Feed</h1>
-        <p>Error fetching feed. Please try again later.</p>
+        <pre className="text-red-600 text-sm">
+          {JSON.stringify(feedError, null, 2)}
+        </pre>
       </div>
     );
   }
