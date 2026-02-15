@@ -21,8 +21,8 @@ interface ProfileUniversityMapping {
 }
 
 export interface Community {
-  community_id: number;
-  community_name: string;
+  id: number;
+  name: string;
   university_id: string;
 }
 
@@ -95,7 +95,7 @@ function FeedCard({ item }: { item: CommunityContext }) {
       </div>
       <p className="text-gray-700 mt-2">{item.context_content}</p>
       <div className="mt-4">
-        <span className="text-sm text-gray-500">{item.community.community_name}</span>
+        <span className="text-sm text-gray-500">{item.community.name}</span>
         <div className="flex mt-2">
         {item.community_context_tag_mappings.map((mapping) => (
           <span
@@ -165,12 +165,12 @@ export default async function ProtectedPage({
           const domainPrefix = emailMatch[1];
           const { data: emailCommunity } = await supabase
             .from('communities')
-            .select('community_id') // Correctly select 'community_id'
-            .eq('community_name', domainPrefix)
+            .select('id')
+            .ilike('name', domainPrefix)  // case-insensitive
             .single();
 
           if (emailCommunity) {
-            communityIdsToFilter = [emailCommunity.community_id];
+            communityIdsToFilter = [emailCommunity.id];
           }
         }
       }
@@ -179,11 +179,11 @@ export default async function ProtectedPage({
       if (communityIdsToFilter.length === 0 && userUniversityId) {
         const { data: defaultCommunities } = await supabase
           .from('communities')
-          .select('community_id')
+          .select('id')
           .eq('university_id', userUniversityId);
 
         if (defaultCommunities) {
-          communityIdsToFilter = defaultCommunities.map(c => c.community_id);
+          communityIdsToFilter = defaultCommunities.map(c => c.id);
         }
       }
     }
@@ -196,7 +196,7 @@ export default async function ProtectedPage({
     .from('community_contexts')
     .select(`
       *,
-      communities(*),
+      communities:community_id(*),
       community_context_tag_mappings(
         community_context_tags(id, name)
       )
