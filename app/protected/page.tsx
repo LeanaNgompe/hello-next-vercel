@@ -248,12 +248,19 @@ export default async function ProtectedPage({
       </div>
     );
   }
+  const { data: tagsData, error: tagsError } = await supabase
+  .from('community_context_tags')
+  .select('id, name')
+  .order('name');
 
+  if (tagsError) {
+    console.error('Tag fetch error:', tagsError);
+  }
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Community Context Feed</h1>
-      <FilterBar />
+      <FilterBar tags={tagsData ?? []} />
       <Suspense fallback={<LoadingSkeleton />}>
         {feed && feed.length > 0 ? (
           <div>

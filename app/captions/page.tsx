@@ -54,12 +54,5 @@ export default async function ItemsPage({ searchParams }: ItemsPageProps) {
     console.error('Error fetching captions:', error.message || error);
     return <div className="text-center text-gray-500 mt-10">Error loading captions.</div>;
   }
-
-  return (
-    <>
-      <FilterBar />
-      <CaptionsList initialCaptions={captions || []} />
-    </>
-  );
 }
 
