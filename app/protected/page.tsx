@@ -6,8 +6,8 @@ import { Suspense } from 'react';
 interface SidechatPost {
   id: string;
   content: string;
-  created_at: string;
-  upvotes: number;
+  created_datetime_utc: string;
+  like_count: number;
 }
 
 // UI Components
@@ -17,9 +17,9 @@ function PostCard({ post }: { post: SidechatPost }) {
       <p className="text-gray-700">{post.content}</p>
       <div className="mt-4 flex justify-between items-center">
         <span className="text-sm text-gray-500">
-          {new Date(post.created_at).toLocaleString()}
+          {new Date(post.created_datetime_utc).toLocaleString()}
         </span>
-        <span className="text-sm text-gray-500">{post.upvotes} upvotes</span>
+        <span className="text-sm text-gray-500">{post.like_count} likes</span>
       </div>
     </div>
   );
@@ -40,7 +40,7 @@ async function MostRecentPosts() {
   const { data: posts, error } = await supabase
     .from('sidechat_posts')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('created_datetime_utc', { ascending: false })
     .limit(10);
 
   if (error) {
@@ -65,7 +65,7 @@ async function MostPopularPosts() {
   const { data: posts, error } = await supabase
     .from('sidechat_posts')
     .select('*')
-    .order('upvotes', { ascending: false })
+    .order('like_count', { ascending: false })
     .limit(10);
 
   if (error) {
