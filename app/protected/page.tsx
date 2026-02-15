@@ -40,7 +40,12 @@ interface CommunityContext {
   end_datetime_utc: string;
   priority: number;
   created_datetime_utc: string;
-  community_context_tag_mappings: { tag: Tag }[]; // Corrected structure
+  community_context_tag_mappings: {
+    community_context_tags: {
+      id: number;
+      name: string;
+    };
+  }[];
   community: Community;
 }
 
@@ -92,14 +97,14 @@ function FeedCard({ item }: { item: CommunityContext }) {
       <div className="mt-4">
         <span className="text-sm text-gray-500">{item.community.community_name}</span>
         <div className="flex mt-2">
-          {item.community_context_tag_mappings.map((mapping) => (
-            <span
-              key={mapping.tag.id}
-              className="bg-gray-200 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded"
-            >
-              {mapping.tag.name}
-            </span>
-          ))}
+        {item.community_context_tag_mappings.map((mapping) => (
+          <span
+            key={mapping.community_context_tags.id}
+            className="bg-gray-200 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded"
+          >
+            {mapping.community_context_tags.name}
+          </span>
+        ))}
         </div>
       </div>
     </div>
@@ -189,13 +194,13 @@ export default async function ProtectedPage({
   const now = new Date().toISOString();
   let query = supabase
     .from('community_contexts')
-    .select(
-      `
+    .select(`
       *,
-      community:communities(*),
-      community_context_tag_mappings(tag:tags(id, name))
-    `
-    )
+      communities(*),
+      community_context_tag_mappings(
+        community_context_tags(id, name)
+      )
+    `)
     .lte('start_datetime_utc', now)
     .gte('end_datetime_utc', now)
     .order('priority', { ascending: false })
@@ -215,11 +220,14 @@ export default async function ProtectedPage({
     const tags = searchParams.tags.split(',');
     const { data: contextsWithTags } = await supabase
       .from('community_context_tag_mappings')
-      .select('context_id')
-      .in('tag_id', tags);
+      .select('community_context_id')
+      .in('community_context_tag_id', tags);
 
     if (contextsWithTags) {
-      query = query.in('context_id', contextsWithTags.map(c => c.context_id));
+      query = query.in(
+        'id',
+        contextsWithTags.map(c => c.community_context_id)
+      );
     } else {
       // If tags are provided but no contexts match them, return an empty array
       query = query.eq('context_id', 'non-existent-id');
