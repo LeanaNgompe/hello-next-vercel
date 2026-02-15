@@ -28,7 +28,7 @@ export default function Sidebar() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.push('/auth/login'); // Redirect to login page after logout
+    router.push('/hello-world'); // Redirect to hello-world page after logout
   };
 
   return (
@@ -45,7 +45,11 @@ export default function Sidebar() {
         <Link href="/captions" className="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100">
           Captions List
         </Link>
-
+        {user && (
+          <Link href="/protected" className="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+            Side Chat Feed
+          </Link>
+        )}
       </nav>
       <div className="p-4 border-t border-gray-200">
         {user ? (
@@ -53,7 +57,7 @@ export default function Sidebar() {
             onClick={handleSignOut}
             className="w-full px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors"
           >
-            Logout ({user.email})
+            Logout
           </button>
         ) : (
           <Link href="/auth/login" className="w-full px-4 py-2 rounded-md bg-blue-500 text-white text-center hover:bg-blue-600 transition-colors block">

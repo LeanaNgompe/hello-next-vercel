@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from '../../lib/supabase/server';
 import CaptionsList from '../../components/CaptionsList';
-import FilterBar from '../../components/FilterBar';
+
 
 interface ItemsPageProps {
   searchParams: {
