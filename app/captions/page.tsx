@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from '../../lib/supabase/server';
 import CaptionsList from '../../components/CaptionsList';
 
+export const dynamic = 'force-dynamic';
+
 export default async function CaptionsPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

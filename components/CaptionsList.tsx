@@ -60,17 +60,29 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
       alert(`Could not save vote: ${error.message}`);
       return;
     }
-    const { data, error: checkError } = await supabase
-    .from('caption_votes')
-    .select('*')
-    .eq('profile_id', user.id)
-    .eq('caption_id', captionId);
 
-    if (checkError) {
-      console.error('Vote check failed:', checkError);
-    } else {
-      console.log('Vote check:', data);
-    }
+    // Update local state counts for immediate feedback
+    setCaptions(prev => prev.map(c => {
+      if (c.id === captionId) {
+        const wasLiked = c.user_vote === 1;
+        const wasDisliked = c.user_vote === -1;
+        
+        let newLikes = c.likes;
+        let newDislikes = c.dislikes;
+
+        // Remove old vote impact if any
+        if (wasLiked) newLikes--;
+        if (wasDisliked) newDislikes--;
+
+        // Add new vote impact
+        if (newValue === 1) newLikes++;
+        if (newValue === -1) newDislikes++;
+
+        return { ...c, likes: newLikes, dislikes: newDislikes, user_vote: newValue };
+      }
+      return c;
+    }));
+
     // Store in history for undo functionality
     setVoteHistory(prev => [...prev, { captionId, vote: newValue }]);
 
@@ -269,7 +281,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
           <p className="text-blue-100 font-medium">Log in to start voting and unlock the discovery experience.</p>
         </div>
         <Link 
-          href="/auth/login" 
+          href={`/auth/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '')}`} 
           className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-black hover:bg-gray-100 transition-all shadow-lg shadow-black/10 flex-shrink-0"
         >
           Log In to Vote

@@ -4,22 +4,25 @@ import { createBrowserClient } from '@supabase/ssr';
 import { FcGoogle } from 'react-icons/fc';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
     setError(null);
-    console.log('handleGoogleLogin called');
+    const next = searchParams.get('next') || '/protected';
+    
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${location.origin}/auth/callback`,
+          redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       });
       if (error) {
