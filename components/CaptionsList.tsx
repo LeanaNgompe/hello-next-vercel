@@ -49,7 +49,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     const { error } = await supabase
       .from('caption_votes')
       .upsert(
-        { caption_id: captionId, profile_id: user.id, vote_value: newValue },
+        { caption_id: captionId, profile_id: user.id, vote_value: newValue, created_datetime_utc: new Date().toISOString() },
         { onConflict: 'caption_id,profile_id' }
       );
 
