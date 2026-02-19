@@ -25,9 +25,16 @@ export default async function CaptionsPage() {
     );
   }
 
-  // 3. Calculate 'like_count' for each caption by summing 'vote_value'
-  const likesMap = (allVotes || []).reduce((acc: Record<string, number>, vote) => {
-    acc[vote.caption_id] = (acc[vote.caption_id] || 0) + (vote.vote_value || 0);
+  // 3. Calculate 'likes' and 'dislikes' for each caption
+  const likesMap = (allVotes || []).reduce((acc: Record<string, { likes: number, dislikes: number }>, vote) => {
+    if (!acc[vote.caption_id]) {
+      acc[vote.caption_id] = { likes: 0, dislikes: 0 };
+    }
+    if (vote.vote_value === 1) {
+      acc[vote.caption_id].likes += 1;
+    } else if (vote.vote_value === -1) {
+      acc[vote.caption_id].dislikes += 1;
+    }
     return acc;
   }, {});
 
@@ -48,7 +55,8 @@ export default async function CaptionsPage() {
   // 5. Merge counts and user status into the captions data
   const processedCaptions = (captions || []).map((caption: any) => ({
     ...caption,
-    like_count: likesMap[caption.id] || 0,
+    likes: likesMap[caption.id]?.likes || 0,
+    dislikes: likesMap[caption.id]?.dislikes || 0,
     user_vote: userVotesMap[caption.id] || 0, // 1 for up, -1 for down, 0 for none
   }));
 

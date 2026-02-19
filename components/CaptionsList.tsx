@@ -17,7 +17,8 @@ interface Caption {
   content: string;
   created_datetime_utc: string;
   images: { url: string } | null;
-  like_count: number;
+  likes: number;
+  dislikes: number;
   user_vote: number;
 }
 
@@ -201,9 +202,14 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-400 font-bold uppercase tracking-widest pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
                   <span>{new Date(currentCaption.created_datetime_utc).toLocaleDateString()}</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-orange-500">★</span> {currentCaption.like_count}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-orange-500">
+                      <FiHeart className="fill-current w-3 h-3" /> {currentCaption.likes}
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-500">
+                      <FiX className="w-3 h-3 stroke-[3]" /> {currentCaption.dislikes}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -292,9 +298,14 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
               </p>
               <div className="flex items-center justify-between text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
                 <span>{new Date(caption.created_datetime_utc).toLocaleDateString()}</span>
-                <span className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 dark:bg-gray-800 rounded-full">
-                  <span className="text-orange-500">★</span> {caption.like_count} votes
-                </span>
+                <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 dark:bg-gray-800 rounded-full">
+                  <span className="flex items-center gap-1 text-orange-500">
+                    <FiHeart className="fill-current w-3 h-3" /> {caption.likes}
+                  </span>
+                  <span className="flex items-center gap-1 text-blue-500">
+                    <FiX className="w-3 h-3 stroke-[3]" /> {caption.dislikes}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
