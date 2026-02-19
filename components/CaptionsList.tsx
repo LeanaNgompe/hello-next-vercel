@@ -64,21 +64,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     // Update local state counts for immediate feedback
     setCaptions(prev => prev.map(c => {
       if (c.id === captionId) {
-        const wasLiked = c.user_vote === 1;
-        const wasDisliked = c.user_vote === -1;
-        
-        let newLikes = c.likes;
-        let newDislikes = c.dislikes;
-
-        // Remove old vote impact if any
-        if (wasLiked) newLikes--;
-        if (wasDisliked) newDislikes--;
-
-        // Add new vote impact
-        if (newValue === 1) newLikes++;
-        if (newValue === -1) newDislikes++;
-
-        return { ...c, likes: newLikes, dislikes: newDislikes, user_vote: newValue };
+        return { ...c, user_vote: newValue};
       }
       return c;
     }));
