@@ -27,6 +27,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
   
   const [captions, setCaptions] = useState<Caption[]>(votableCaptions);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [voteHistory, setVoteHistory] = useState<{ captionId: string, vote: number }[]>([]);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   
@@ -49,7 +50,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     const { error } = await supabase
       .from('caption_votes')
       .upsert(
-        { caption_id: captionId, profile_id: user.id, vote_value: newValue, created_datetime_utc: new Date().toISOString() },
+        { caption_id: captionId, profile_id: user.id, vote_value: newValue, created_datetime_utc: new Date().toISOString(), modified_datetime_utc: new Date().toISOString()},
         { onConflict: 'caption_id,profile_id' }
       );
 
@@ -58,17 +59,9 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
       alert(`Could not save vote: ${error.message}`);
       return;
     }
-    //debug log to verify vote was saved
-    const { data, error: checkError } = await supabase
-    .from('caption_votes')
-    .select('*')
-    .eq('profile_id', user.id)
-    .eq('caption_id', captionId);
-    if (checkError) {
-    console.error('Vote check failed:', checkError);
-    } else {
-      console.log('Vote check:', data);
-    }
+
+    // Store in history for undo functionality
+    setVoteHistory(prev => [...prev, { captionId, vote: newValue }]);
 
     // If successful, proceed with animation
     const direction = newValue === 1 ? 'right' : 'left';
@@ -81,6 +74,39 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
       setIsAnimating(false);
       setDragOffset({ x: 0, y: 0 });
     }, 500);
+  };
+
+  /** Reverses the last vote and moves the UI back */
+  const handleUndo = async () => {
+    if (!user || isAnimating || voteHistory.length === 0) return;
+
+    const lastVote = voteHistory[voteHistory.length - 1];
+    setIsAnimating(true);
+
+    // Remove the vote from Supabase
+    const { error } = await supabase
+      .from('caption_votes')
+      .delete()
+      .eq('caption_id', lastVote.captionId)
+      .eq('profile_id', user.id);
+
+    if (error) {
+      console.error('Undo failed:', error.message);
+      alert(`Could not undo vote: ${error.message}`);
+      setIsAnimating(false);
+      return;
+    }
+
+    // Update local state
+    setVoteHistory(prev => prev.slice(0, -1));
+    setCurrentIndex(prev => prev - 1);
+    
+    // Smooth reset
+    setTimeout(() => {
+      setIsAnimating(false);
+      setExitDirection(null);
+      setDragOffset({ x: 0, y: 0 });
+    }, 300);
   };
 
   /** Drag/Swipe Event Handlers */
@@ -192,7 +218,15 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
 
         {/* Action Buttons - Perfectly centered below the card */}
         {!isLastCard && (
-          <div className="flex items-center justify-center gap-10 mt-12 w-full">
+          <div className="flex items-center justify-center gap-8 mt-12 w-full">
+            <button 
+              onClick={handleUndo} 
+              disabled={isAnimating || voteHistory.length === 0} 
+              className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:scale-110 active:scale-95 transition-all text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 flex items-center justify-center disabled:opacity-30 disabled:hover:scale-100"
+              aria-label="Undo"
+            >
+              <FiRotateCcw className="w-5 h-5 stroke-[3]" />
+            </button>
             <button 
               onClick={() => handleVote(-1)} 
               disabled={isAnimating} 
