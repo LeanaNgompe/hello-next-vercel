@@ -281,7 +281,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
           <p className="text-blue-100 font-medium">Log in to start voting and unlock the discovery experience.</p>
         </div>
         <Link 
-          href={`/auth/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '')}`} 
+          href="/auth/login" 
           className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-black hover:bg-gray-100 transition-all shadow-lg shadow-black/10 flex-shrink-0"
         >
           Log In to Vote

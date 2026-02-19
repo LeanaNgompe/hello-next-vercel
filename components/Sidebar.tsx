@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Sidebar() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -28,7 +29,13 @@ export default function Sidebar() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.push('/hello-world'); // Redirect to hello-world page after logout
+    
+    if (pathname.startsWith('/protected')) {
+      router.push('/hello-world');
+    } else {
+      // If on a public page (like /captions), stay there and refresh to update UI state
+      router.refresh();
+    }
   };
 
   return (
