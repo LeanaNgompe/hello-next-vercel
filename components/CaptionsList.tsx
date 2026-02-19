@@ -59,7 +59,17 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
       alert(`Could not save vote: ${error.message}`);
       return;
     }
+    const { data, error: checkError } = await supabase
+    .from('caption_votes')
+    .select('*')
+    .eq('profile_id', user.id)
+    .eq('caption_id', captionId);
 
+    if (checkError) {
+      console.error('Vote check failed:', checkError);
+    } else {
+      console.log('Vote check:', data);
+    }
     // Store in history for undo functionality
     setVoteHistory(prev => [...prev, { captionId, vote: newValue }]);
 
@@ -76,37 +86,29 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     }, 500);
   };
 
-  /** Reverses the last vote and moves the UI back */
+  /** Reverses the last action and moves the UI back to show the previous vote */
   const handleUndo = async () => {
     if (!user || isAnimating || voteHistory.length === 0) return;
 
     const lastVote = voteHistory[voteHistory.length - 1];
+    
+    // Move the index back first so the previous card is rendered
+    setCurrentIndex(prev => prev - 1);
+    setVoteHistory(prev => prev.slice(0, -1));
+    
+    // Visual feedback: Show the card offset in the direction of the previous vote
+    // so the user "sees" what they voted for (Like or Nope indicator will appear)
+    setDragOffset({ x: lastVote.vote === 1 ? 120 : -120, y: 0 });
     setIsAnimating(true);
 
-    // Remove the vote from Supabase
-    const { error } = await supabase
-      .from('caption_votes')
-      .delete()
-      .eq('caption_id', lastVote.captionId)
-      .eq('profile_id', user.id);
-
-    if (error) {
-      console.error('Undo failed:', error.message);
-      alert(`Could not undo vote: ${error.message}`);
-      setIsAnimating(false);
-      return;
-    }
-
-    // Update local state
-    setVoteHistory(prev => prev.slice(0, -1));
-    setCurrentIndex(prev => prev - 1);
-    
-    // Smooth reset
+    // Smoothly animate the card back to the center position
     setTimeout(() => {
-      setIsAnimating(false);
-      setExitDirection(null);
       setDragOffset({ x: 0, y: 0 });
-    }, 300);
+      // Allow interaction again after the return animation finishes
+      setTimeout(() => {
+        setIsAnimating(false);
+      }, 300);
+    }, 800);
   };
 
   /** Drag/Swipe Event Handlers */
