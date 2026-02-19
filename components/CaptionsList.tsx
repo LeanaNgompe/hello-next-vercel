@@ -44,21 +44,36 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     if (isAnimating || isLastCard) return;
 
     const captionId = currentCaption.id;
-    const direction = newValue === 1 ? 'right' : 'left';
     
+    // Persist to Supabase first
+    const { error } = await supabase
+      .from('caption_votes')
+      .upsert(
+        { caption_id: captionId, profile_id: user.id, vote_value: newValue },
+        { onConflict: 'caption_id,profile_id' }
+      );
+
+    if (error) {
+      console.error('Voting failed:', error.message);
+      alert(`Could not save vote: ${error.message}`);
+      return;
+    }
+    //debug log to verify vote was saved
+    const { data, error: checkError } = await supabase
+    .from('caption_votes')
+    .select('*')
+    .eq('profile_id', user.id)
+    .eq('caption_id', captionId);
+    if (checkError) {
+    console.error('Vote check failed:', checkError);
+    } else {
+      console.log('Vote check:', data);
+    }
+
+    // If successful, proceed with animation
+    const direction = newValue === 1 ? 'right' : 'left';
     setExitDirection(direction);
     setIsAnimating(true);
-
-    try {
-      await supabase
-        .from('caption_votes')
-        .upsert(
-          { caption_id: captionId, profile_id: user.id, vote_value: newValue },
-          { onConflict: 'caption_id,profile_id' }
-        );
-    } catch (err) {
-      console.error('Voting failed:', err);
-    }
 
     setTimeout(() => {
       setCurrentIndex(prev => prev + 1);
