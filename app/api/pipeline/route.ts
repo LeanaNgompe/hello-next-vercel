@@ -6,11 +6,8 @@ const AUTH_TOKEN = process.env.ALMOSTCRACKD_TOKEN;
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const step = searchParams.get('step');
+  const authHeader = req.headers.get('Authorization');
   
-  if (!AUTH_TOKEN) {
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-  }
-
   try {
     const body = await req.json();
     let endpoint = '';
@@ -32,7 +29,7 @@ export async function POST(req: NextRequest) {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${AUTH_TOKEN}`,
+        'Authorization': authHeader || `Bearer ${AUTH_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
