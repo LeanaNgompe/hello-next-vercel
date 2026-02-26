@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from '../../lib/supabase/server';
 import CaptionsList from '../../components/CaptionsList';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,13 +66,24 @@ export default async function CaptionsPage() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <header className="mb-10 space-y-2">
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-            Caption Gallery
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Explore and vote for the community's best captions.
-          </p>
+        <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+              Caption Gallery
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
+              Explore and vote for the community's best captions.
+            </p>
+          </div>
+          
+          {user && (
+            <Link 
+              href="/captions/new"
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+            >
+              <span>Create New</span>
+            </Link>
+          )}
         </header>
         
         <CaptionsList initialCaptions={processedCaptions} user={user} />
