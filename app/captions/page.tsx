@@ -74,6 +74,16 @@ export default async function CaptionsPage() {
             <p className="text-gray-600 dark:text-gray-400 text-lg">
               Explore and vote for the community's best captions.
             </p>
+            {user && processedCaptions.length === 0 && (
+              <p className="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded-lg text-sm font-medium border border-yellow-200 dark:border-yellow-800">
+                DEBUG: No captions were returned from the database. This is likely an RLS issue.
+              </p>
+            )}
+            {user && processedCaptions.length > 0 && processedCaptions.every(c => c.user_vote !== 0) && (
+              <p className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-medium border border-blue-200 dark:border-blue-800">
+                DEBUG: You have already voted on all {processedCaptions.length} captions in the database.
+              </p>
+            )}
           </div>
           
           {user && (
