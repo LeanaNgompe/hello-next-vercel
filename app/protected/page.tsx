@@ -109,7 +109,7 @@ export default function SidechatClusterMap() {
         .on('end', dragended) as any
       );
 
-    // Add labels: only show when the circle is large enough and use a few words
+    // Add labels: only show when circle is large enough; keep original size and animate
     const labels = svg.append('g')
       .selectAll('text')
       .data(posts)
@@ -118,18 +118,16 @@ export default function SidechatClusterMap() {
       .text(d => {
         const r = radiusScale(d.like_count);
         if (r < 30) return ''; // skip tiny nodes
-        const words = d.content.split(' ').slice(0, 3); // first three words
+        const words = d.content.split(' ').slice(0, 3);
         return words.join(' ');
       })
       .attr('text-anchor', 'middle')
       .attr('dy', '.3em')
       .attr('fill', '#fff')
-      .attr('font-size', d => `${Math.max(8, Math.min(16, radiusScale(d.like_count) / 3))}px`)
-      // constrain text width to circle diameter, letting SVG scale spacing/glyphs
-      .attr('textLength', d => radiusScale(d.like_count) * 1.7)
-      .attr('lengthAdjust', 'spacingAndGlyphs')
+      .attr('font-size', '10px')
       .attr('pointer-events', 'none')
-      .attr('font-weight', 'bold');
+      .attr('font-weight', 'bold')
+      .style('transition', 'x 0.2s, y 0.2s');
 
     function ticked() {
       nodes
