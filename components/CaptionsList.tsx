@@ -250,11 +250,17 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                 <div className="flex items-center justify-between text-xs text-gray-400 font-bold uppercase tracking-widest pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
                   <span>{new Date(currentCaption.created_datetime_utc).toLocaleDateString()}</span>
                   <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 text-orange-500">
-                      <FiHeart className="fill-current w-3 h-3" /> {getDisplayCounts(currentCaption).likes}
+                    <span className="flex items-center gap-1 text-orange-500 font-black">
+                      <FiHeart className="fill-current w-3 h-3" />
+                      <span key={`likes-${currentCaption.id}-${getDisplayCounts(currentCaption).likes}`} className="animate-in fade-in zoom-in duration-300">
+                        {getDisplayCounts(currentCaption).likes}
+                      </span>
                     </span>
-                    <span className="flex items-center gap-1 text-blue-500">
-                      <FiX className="w-3 h-3 stroke-[3]" /> {getDisplayCounts(currentCaption).dislikes}
+                    <span className="flex items-center gap-1 text-blue-500 font-black">
+                      <FiX className="w-3 h-3 stroke-[3]" />
+                      <span key={`dislikes-${currentCaption.id}-${getDisplayCounts(currentCaption).dislikes}`} className="animate-in fade-in zoom-in duration-300">
+                        {getDisplayCounts(currentCaption).dislikes}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -347,10 +353,10 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                 <span>{new Date(caption.created_datetime_utc).toLocaleDateString()}</span>
                 <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 dark:bg-gray-800 rounded-full">
                   <span className="flex items-center gap-1 text-orange-500">
-                    <FiHeart className="fill-current w-3 h-3" /> {caption.likes}
+                    <FiHeart className="fill-current w-3 h-3" /> {getDisplayCounts(caption).likes}
                   </span>
                   <span className="flex items-center gap-1 text-blue-500">
-                    <FiX className="w-3 h-3 stroke-[3]" /> {caption.dislikes}
+                    <FiX className="w-3 h-3 stroke-[3]" /> {getDisplayCounts(caption).dislikes}
                   </span>
                 </div>
               </div>
