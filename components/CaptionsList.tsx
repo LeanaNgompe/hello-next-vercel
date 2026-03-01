@@ -20,8 +20,8 @@ interface Caption {
   likes: number;
   dislikes: number;
   user_vote: number;
-  base_likes?: number;
-  base_dislikes?: number;
+  base_likes: number;
+  base_dislikes: number;
 }
 
 export default function CaptionsList({ initialCaptions, user }: { initialCaptions: Caption[], user: any }) {
@@ -29,11 +29,17 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
   const votableCaptions = useMemo(() => {
     return initialCaptions
       .filter(c => c.images?.url)
-      .map(c => ({
-        ...c,
-        base_likes: c.likes - (c.user_vote === 1 ? 1 : 0),
-        base_dislikes: c.dislikes - (c.user_vote === -1 ? 1 : 0)
-      }));
+      .map(c => {
+        // Ensure we never get negative base counts even if database state is inconsistent
+        const bLikes = Math.max(0, (c.likes || 0) - (c.user_vote === 1 ? 1 : 0));
+        const bDislikes = Math.max(0, (c.dislikes || 0) - (c.user_vote === -1 ? 1 : 0));
+        
+        return {
+          ...c,
+          base_likes: bLikes,
+          base_dislikes: bDislikes
+        };
+      });
   }, [initialCaptions]);
   
   const [captions, setCaptions] = useState<Caption[]>(votableCaptions);
