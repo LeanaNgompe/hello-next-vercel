@@ -20,11 +20,21 @@ interface Caption {
   likes: number;
   dislikes: number;
   user_vote: number;
+  base_likes?: number;
+  base_dislikes?: number;
 }
 
 export default function CaptionsList({ initialCaptions, user }: { initialCaptions: Caption[], user: any }) {
   // Only allow voting on captions that have an image
-  const votableCaptions = useMemo(() => initialCaptions.filter(c => c.images?.url), [initialCaptions]);
+  const votableCaptions = useMemo(() => {
+    return initialCaptions
+      .filter(c => c.images?.url)
+      .map(c => ({
+        ...c,
+        base_likes: c.likes - (c.user_vote === 1 ? 1 : 0),
+        base_dislikes: c.dislikes - (c.user_vote === -1 ? 1 : 0)
+      }));
+  }, [initialCaptions]);
   
   const [captions, setCaptions] = useState<Caption[]>(votableCaptions);
   const [currentIndex, setCurrentIndex] = useState(() => {
@@ -51,32 +61,40 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
 
     const captionId = currentCaption.id;
     
-    // Persist to Supabase first
+    // Update local state immediately for snappy UI
+    setCaptions(prev => prev.map(c => {
+      if (c.id === captionId) {
+        return { ...c, user_vote: newValue };
+      }
+      return c;
+    }));
+
+    // Persist to Supabase
     const { error } = await supabase
       .from('caption_votes')
       .upsert(
-        { caption_id: captionId, profile_id: user.id, vote_value: newValue, created_datetime_utc: new Date().toISOString(), modified_datetime_utc: new Date().toISOString()},
+        { 
+          caption_id: captionId, 
+          profile_id: user.id, 
+          vote_value: newValue, 
+          created_datetime_utc: new Date().toISOString(), 
+          modified_datetime_utc: new Date().toISOString()
+        },
         { onConflict: 'caption_id,profile_id' }
       );
 
     if (error) {
       console.error('Voting failed:', error.message);
+      // Revert local state on error
+      setCaptions(prev => prev.map(c => c.id === captionId ? { ...c, user_vote: currentCaption.user_vote } : c));
       alert(`Could not save vote: ${error.message}`);
       return;
     }
 
-    // Update local state counts for immediate feedback
-    setCaptions(prev => prev.map(c => {
-      if (c.id === captionId) {
-        return { ...c, user_vote: newValue};
-      }
-      return c;
-    }));
-
     // Store in history for undo functionality
     setVoteHistory(prev => [...prev, { captionId, vote: newValue }]);
 
-    // If successful, proceed with animation
+    // Proceed with animation
     const direction = newValue === 1 ? 'right' : 'left';
     setExitDirection(direction);
     setIsAnimating(true);
@@ -94,24 +112,51 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     if (!user || isAnimating || voteHistory.length === 0) return;
 
     const lastVote = voteHistory[voteHistory.length - 1];
+    const prevIndex = currentIndex - 1;
+    const captionToUndo = captions[prevIndex];
+
+    // 1. Revert in Database (Delete the vote)
+    const { error } = await supabase
+      .from('caption_votes')
+      .delete()
+      .eq('caption_id', captionToUndo.id)
+      .eq('profile_id', user.id);
+
+    if (error) {
+      console.error('Undo failed:', error.message);
+      alert('Failed to undo vote in database.');
+      return;
+    }
+
+    // 2. Update local state
+    setCaptions(prev => prev.map(c => {
+      if (c.id === captionToUndo.id) {
+        return { ...c, user_vote: 0 };
+      }
+      return c;
+    }));
     
-    // Move the index back first so the previous card is rendered
-    setCurrentIndex(prev => prev - 1);
+    // 3. Move the index back
+    setCurrentIndex(prevIndex);
     setVoteHistory(prev => prev.slice(0, -1));
     
-    // Visual feedback: Show the card offset in the direction of the previous vote
-    // so the user "sees" what they voted for (Like or Nope indicator will appear)
+    // 4. Visual feedback animation
     setDragOffset({ x: lastVote.vote === 1 ? 120 : -120, y: 0 });
     setIsAnimating(true);
 
-    // Smoothly animate the card back to the center position
     setTimeout(() => {
       setDragOffset({ x: 0, y: 0 });
-      // Allow interaction again after the return animation finishes
       setTimeout(() => {
         setIsAnimating(false);
       }, 300);
     }, 800);
+  };
+
+  // Helper to get displayed counts (Base + User's contribution)
+  const getDisplayCounts = (caption: Caption) => {
+    const likes = (caption.base_likes || 0) + (caption.user_vote === 1 ? 1 : 0);
+    const dislikes = (caption.base_dislikes || 0) + (caption.user_vote === -1 ? 1 : 0);
+    return { likes, dislikes };
   };
 
   /** Drag/Swipe Event Handlers */
