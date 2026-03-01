@@ -251,10 +251,10 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                   <span>{new Date(currentCaption.created_datetime_utc).toLocaleDateString()}</span>
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1 text-orange-500">
-                      <FiHeart className="fill-current w-3 h-3" /> {currentCaption.likes}
+                      <FiHeart className="fill-current w-3 h-3" /> {getDisplayCounts(currentCaption).likes}
                     </span>
                     <span className="flex items-center gap-1 text-blue-500">
-                      <FiX className="w-3 h-3 stroke-[3]" /> {currentCaption.dislikes}
+                      <FiX className="w-3 h-3 stroke-[3]" /> {getDisplayCounts(currentCaption).dislikes}
                     </span>
                   </div>
                 </div>
