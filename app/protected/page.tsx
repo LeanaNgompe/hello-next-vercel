@@ -1,111 +1,228 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
+'use client';
 
-// TypeScript Interfaces
-interface SidechatPost {
+import React, { useEffect, useRef, useState } from 'react';
+import * as d3 from 'd3';
+import { supabase } from '@/lib/supabase/client';
+import { FiX, FiHeart, FiClock } from 'react-icons/fi';
+
+// Types
+interface SidechatPost extends d3.SimulationNodeDatum {
   id: string;
   content: string;
-  created_datetime_utc: string;
   like_count: number;
+  created_datetime_utc: string;
+  topic?: string;
 }
 
-// UI Components
-function PostCard({ post }: { post: SidechatPost }) {
+const TOPICS = ['Campus Life', 'Memes', 'Confessions', 'Academic', 'Social', 'Rants'];
+
+export default function SidechatClusterMap() {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [posts, setPosts] = useState<SidechatPost[]>([]);
+  const [selectedPost, setSelectedPost] = useState<SidechatPost | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch Data
+  useEffect(() => {
+    async function fetchPopularPosts() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('sidechat_posts')
+        .select('id, content, like_count, created_datetime_utc')
+        .order('like_count', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error fetching sidechat posts:', error);
+      } else if (data) {
+        // Assign random topics for shading
+        const processedData: SidechatPost[] = data.map((post) => ({
+          ...post,
+          topic: TOPICS[Math.floor(Math.random() * TOPICS.length)],
+        }));
+        setPosts(processedData);
+      }
+      setLoading(false);
+    }
+
+    fetchPopularPosts();
+  }, []);
+
+  // D3 Force Simulation
+  useEffect(() => {
+    if (!posts.length || !svgRef.current) return;
+
+    const width = svgRef.current.clientWidth || 800;
+    const height = 600;
+
+    const svg = d3.select(svgRef.current)
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+
+    // Clear previous elements
+    svg.selectAll('*').remove();
+
+    // Scale for circle radius based on like_count
+    const radiusScale = d3.scaleSqrt()
+      .domain([0, d3.max(posts, d => d.like_count) || 100])
+      .range([20, 80]);
+
+    // Color scale for topics
+    const colorScale = d3.scaleOrdinal(d3.schemeTableau10)
+      .domain(TOPICS);
+
+    // Simulation
+    const simulation = d3.forceSimulation<SidechatPost>(posts)
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('charge', d3.forceManyBody().strength(5))
+      .force('collide', d3.forceCollide<SidechatPost>(d => radiusScale(d.like_count) + 5))
+      .on('tick', ticked);
+
+    // Draw Circles
+    const nodes = svg.append('g')
+      .selectAll('circle')
+      .data(posts)
+      .enter()
+      .append('circle')
+      .attr('r', d => radiusScale(d.like_count))
+      .attr('fill', d => colorScale(d.topic || 'Social'))
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2)
+      .attr('class', 'cursor-pointer transition-all duration-300 hover:opacity-80 hover:stroke-blue-400')
+      .on('click', (event, d) => setSelectedPost(d))
+      .call(d3.drag<SVGCircleElement, SidechatPost>()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended) as any
+      );
+
+    // Add labels (truncated content)
+    const labels = svg.append('g')
+      .selectAll('text')
+      .data(posts)
+      .enter()
+      .append('text')
+      .text(d => d.content.substring(0, 15) + '...')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '.3em')
+      .attr('fill', '#fff')
+      .attr('font-size', '10px')
+      .attr('pointer-events', 'none')
+      .attr('font-weight', 'bold');
+
+    function ticked() {
+      nodes
+        .attr('cx', d => d.x!)
+        .attr('cy', d => d.y!);
+      
+      labels
+        .attr('x', d => d.x!)
+        .attr('y', d => d.y!);
+    }
+
+    // Drag functions
+    function dragstarted(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event: any, d: any) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    return () => {
+      simulation.stop();
+    };
+  }, [posts]);
+
   return (
-    <div className="bg-white shadow-md rounded-lg p-4 mb-4">
-      <p className="text-gray-700">{post.content}</p>
-      <div className="mt-4 flex justify-between items-center">
-        <span className="text-sm text-gray-500">
-          {new Date(post.created_datetime_utc).toLocaleString()}
-        </span>
-        <span className="text-sm text-gray-500">{post.like_count} likes</span>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-8 text-center md:text-left">
+          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
+            Sidechat Feed <span className="text-blue-600">Cluster Map</span>
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">
+            Visualizing the top 20 most liked posts by topic and engagement.
+          </p>
+        </header>
+
+        {loading ? (
+          <div className="flex items-center justify-center h-[600px] bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="relative bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 h-[600px]">
+            <svg ref={svgRef} className="w-full h-full" />
+            
+            {/* Legend */}
+            <div className="absolute bottom-6 left-6 flex flex-wrap gap-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-lg max-w-xs">
+              {TOPICS.map((topic, i) => (
+                <div key={topic} className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: d3.schemeTableau10[i % 10] }} 
+                  />
+                  <span className="text-xs font-bold text-gray-600 dark:text-gray-400">{topic}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
 
-function LoadingSkeleton() {
-  return (
-    <div>
-      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-24 animate-pulse"></div>
-      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-24 animate-pulse"></div>
-      <div className="bg-white shadow-md rounded-lg p-4 mb-4 h-24 animate-pulse"></div>
-    </div>
-  );
-}
+      {/* Modal Overlay */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div className="px-4 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-black uppercase tracking-widest">
+                  {selectedPost.topic}
+                </div>
+                <button 
+                  onClick={() => setSelectedPost(null)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                >
+                  <FiX className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
 
-async function MostRecentPosts() {
-  const supabase = await createSupabaseServerClient();
-  const { data: posts, error } = await supabase
-    .from('sidechat_posts')
-    .select('*')
-    .order('created_datetime_utc', { ascending: false })
-    .limit(10);
+              <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight mb-8">
+                "{selectedPost.content}"
+              </p>
 
-  if (error) {
-    console.error('Error fetching most recent posts:', error);
-    return <p className="text-red-500">Error fetching recent posts.</p>;
-  }
-
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Most Recent Posts</h2>
-      {posts && posts.length > 0 ? (
-        posts.map((post) => <PostCard key={post.id} post={post} />)
-      ) : (
-        <p>No recent posts found.</p>
+              <div className="flex items-center gap-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-2 text-orange-500">
+                  <FiHeart className="w-5 h-5 fill-current" />
+                  <span className="font-black">{selectedPost.like_count}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-400">
+                  <FiClock className="w-5 h-5" />
+                  <span className="font-bold text-sm">
+                    {new Date(selectedPost.created_datetime_utc).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setSelectedPost(null)}
+              className="w-full py-5 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold transition-all uppercase tracking-widest text-xs"
+            >
+              Close Post
+            </button>
+          </div>
+        </div>
       )}
-    </div>
-  );
-}
-
-async function MostPopularPosts() {
-  const supabase = await createSupabaseServerClient();
-  const { data: posts, error } = await supabase
-    .from('sidechat_posts')
-    .select('*')
-    .order('like_count', { ascending: false })
-    .limit(10);
-
-  if (error) {
-    console.error('Error fetching most popular posts:', error);
-    return <p className="text-red-500">Error fetching popular posts.</p>;
-  }
-
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Most Popular Posts</h2>
-      {posts && posts.length > 0 ? (
-        posts.map((post) => <PostCard key={post.id} post={post} />)
-      ) : (
-        <p>No popular posts found.</p>
-      )}
-    </div>
-  );
-}
-
-export default async function ProtectedPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/hello-world');
-  }
-
-  return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Sidechat Feed</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Suspense fallback={<LoadingSkeleton />}>
-          <MostRecentPosts />
-        </Suspense>
-        <Suspense fallback={<LoadingSkeleton />}>
-          <MostPopularPosts />
-        </Suspense>
-      </div>
     </div>
   );
 }
