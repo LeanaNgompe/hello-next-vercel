@@ -16,7 +16,7 @@ export default function NewCaptionPage() {
             href="/captions" 
             className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
-            <FiArrowLeft /> Back to Gallery
+            <FiArrowLeft /> Back to Voting
           </Link>
           <div className="space-y-2">
             <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
