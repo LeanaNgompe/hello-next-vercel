@@ -22,6 +22,19 @@ export default function SidechatClusterMap() {
   const [selectedPost, setSelectedPost] = useState<SidechatPost | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // crude topic classifier using keywords; return one of TOPICS
+  function classifyTopic(content: string): string {
+    const lower = content.toLowerCase();
+    if (/\b(meme|lol|funny|haha)\b/.test(lower)) return 'Memes';
+    if (/\b(confess|confession|sorry|regret)\b/.test(lower)) return 'Confessions';
+    if (/\b(class|exam|homework|professor|grade)\b/.test(lower)) return 'Academic';
+    if (/\b(ghost|date|party|friend|crowd)\b/.test(lower)) return 'Social';
+    if (/\b(rant|ranting|ugh|hate|annoy)\b/.test(lower)) return 'Rants';
+    if (/\b(dorm|campus|library|food|club|lecture)\b/.test(lower)) return 'Campus Life';
+    // fallback random
+    return TOPICS[Math.floor(Math.random() * TOPICS.length)];
+  }
+
   // Fetch Data
   useEffect(() => {
     async function fetchPopularPosts() {
@@ -35,10 +48,10 @@ export default function SidechatClusterMap() {
       if (error) {
         console.error('Error fetching sidechat posts:', error);
       } else if (data) {
-        // Assign random topics for shading
+        // apply classification for shading
         const processedData: SidechatPost[] = data.map((post) => ({
           ...post,
-          topic: TOPICS[Math.floor(Math.random() * TOPICS.length)],
+          topic: classifyTopic(post.content),
         }));
         setPosts(processedData);
       }
@@ -96,17 +109,25 @@ export default function SidechatClusterMap() {
         .on('end', dragended) as any
       );
 
-    // Add labels (truncated content)
+    // Add labels: only show when the circle is large enough and use a few words
     const labels = svg.append('g')
       .selectAll('text')
       .data(posts)
       .enter()
       .append('text')
-      .text(d => d.content.substring(0, 15) + '...')
+      .text(d => {
+        const r = radiusScale(d.like_count);
+        if (r < 30) return ''; // skip tiny nodes
+        const words = d.content.split(' ').slice(0, 3); // first three words
+        return words.join(' ');
+      })
       .attr('text-anchor', 'middle')
       .attr('dy', '.3em')
       .attr('fill', '#fff')
-      .attr('font-size', '10px')
+      .attr('font-size', d => `${Math.max(8, Math.min(16, radiusScale(d.like_count) / 3))}px`)
+      // constrain text width to circle diameter, letting SVG scale spacing/glyphs
+      .attr('textLength', d => radiusScale(d.like_count) * 1.7)
+      .attr('lengthAdjust', 'spacingAndGlyphs')
       .attr('pointer-events', 'none')
       .attr('font-weight', 'bold');
 
