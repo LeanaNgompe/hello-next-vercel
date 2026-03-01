@@ -27,7 +27,11 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
   const votableCaptions = useMemo(() => initialCaptions.filter(c => c.images?.url), [initialCaptions]);
   
   const [captions, setCaptions] = useState<Caption[]>(votableCaptions);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (!user) return 0;
+    const firstUnvoted = votableCaptions.findIndex(c => c.user_vote === 0);
+    return firstUnvoted === -1 ? votableCaptions.length : firstUnvoted;
+  });
   const [voteHistory, setVoteHistory] = useState<{ captionId: string, vote: number }[]>([]);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
