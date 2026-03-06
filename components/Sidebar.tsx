@@ -13,13 +13,21 @@ export default function Sidebar() {
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setUser(session?.user ?? null);
+        const user = session?.user ?? null;
+        setUser(user);
+        if (user) {
+          console.log('Auth state changed - user logged in with uid:', user.id);
+        }
       }
     );
 
     // Initial check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const user = session?.user ?? null;
+      setUser(user);
+      if (user) {
+        console.log('Initial session - user logged in with uid:', user.id);
+      }
     });
 
     return () => {
