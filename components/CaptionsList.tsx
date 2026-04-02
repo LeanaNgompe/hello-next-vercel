@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase/client';
-import { FiRotateCcw, FiHeart, FiX, FiLock } from 'react-icons/fi';
+import { FiRotateCcw, FiStar, FiLock, FiMessageSquare } from 'react-icons/fi';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Link from 'next/link';
@@ -17,29 +17,23 @@ interface Caption {
   content: string;
   created_datetime_utc: string;
   images: { url: string } | null;
-  likes: number;
-  dislikes: number;
+  avg_score: number | string;
+  vote_count: number;
   user_vote: number;
-  base_likes: number;
-  base_dislikes: number;
 }
+
+const SCALE_LABELS: Record<number, string> = {
+  1: 'Not funny at all',
+  2: 'Not very funny',
+  3: 'Indifferent',
+  4: 'Funny',
+  5: 'Very funny',
+};
 
 export default function CaptionsList({ initialCaptions, user }: { initialCaptions: Caption[], user: any }) {
   // Only allow voting on captions that have an image
   const votableCaptions = useMemo(() => {
-    return initialCaptions
-      .filter(c => c.images?.url)
-      .map(c => {
-        // Ensure we never get negative base counts even if database state is inconsistent
-        const bLikes = Math.max(0, (c.likes || 0) - (c.user_vote === 1 ? 1 : 0));
-        const bDislikes = Math.max(0, (c.dislikes || 0) - (c.user_vote === -1 ? 1 : 0));
-        
-        return {
-          ...c,
-          base_likes: bLikes,
-          base_dislikes: bDislikes
-        };
-      });
+    return initialCaptions.filter(c => c.images?.url);
   }, [initialCaptions]);
   
   const [captions, setCaptions] = useState<Caption[]>(votableCaptions);
@@ -51,6 +45,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
   const [voteHistory, setVoteHistory] = useState<{ captionId: string, vote: number }[]>([]);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [sliderValue, setSliderValue] = useState(3);
   
   // Swipe State
   const [dragStart, setDragStart] = useState<{ x: number, y: number } | null>(null);
@@ -101,7 +96,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     setVoteHistory(prev => [...prev, { captionId, vote: newValue }]);
 
     // Proceed with animation
-    const direction = newValue === 1 ? 'right' : 'left';
+    const direction = newValue >= 4 ? 'right' : newValue <= 2 ? 'left' : 'right'; // Animation direction
     setExitDirection(direction);
     setIsAnimating(true);
 
@@ -110,6 +105,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
       setExitDirection(null);
       setIsAnimating(false);
       setDragOffset({ x: 0, y: 0 });
+      setSliderValue(3); // Reset slider for next card
     }, 500);
   };
 
@@ -147,7 +143,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     setVoteHistory(prev => prev.slice(0, -1));
     
     // 4. Visual feedback animation
-    setDragOffset({ x: lastVote.vote === 1 ? 120 : -120, y: 0 });
+    setDragOffset({ x: lastVote.vote >= 4 ? 120 : -120, y: 0 });
     setIsAnimating(true);
 
     setTimeout(() => {
@@ -156,13 +152,6 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
         setIsAnimating(false);
       }, 300);
     }, 800);
-  };
-
-  // Helper to get displayed counts (Base + User's contribution)
-  const getDisplayCounts = (caption: Caption) => {
-    const likes = (caption.base_likes || 0) + (caption.user_vote === 1 ? 1 : 0);
-    const dislikes = (caption.base_dislikes || 0) + (caption.user_vote === -1 ? 1 : 0);
-    return { likes, dislikes };
   };
 
   /** Drag/Swipe Event Handlers */
@@ -180,9 +169,9 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
 
   const onDragEnd = () => {
     if (!dragStart || isAnimating || isLastCard) return;
-    const threshold = 120;
-    if (dragOffset.x > threshold) handleVote(1);
-    else if (dragOffset.x < -threshold) handleVote(-1);
+    const threshold = 150;
+    if (dragOffset.x > threshold) handleVote(5); // Swipe right for "Very funny"
+    else if (dragOffset.x < -threshold) handleVote(1); // Swipe left for "Not funny at all"
     else setDragOffset({ x: 0, y: 0 });
     setDragStart(null);
   };
@@ -202,7 +191,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     return (
       <div className="flex flex-col items-center justify-center py-10 min-h-[70vh]">
         {!isLastCard ? (
-          <div className="relative w-full max-w-sm h-[550px] perspective-1000">
+          <div className="relative w-full max-w-sm h-[500px] perspective-1000">
             {currentIndex + 1 < captions.length && (
               <div className="absolute inset-0 scale-95 translate-y-4 opacity-50 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 -z-10" />
             )}
@@ -223,8 +212,8 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                 dragOffset.x < -50 && "border-blue-500/50"
               )}
             >
-              {/* Image Section - Takes 65% of the card height */}
-              <div className="relative h-[65%] w-full bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+              {/* Image Section - Takes 60% of the card height */}
+              <div className="relative h-[60%] w-full bg-gray-100 dark:bg-gray-800 flex-shrink-0">
                 {currentCaption.images?.url && (
                   <img 
                     src={currentCaption.images.url} 
@@ -236,17 +225,17 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                 {/* Swipe Indicators */}
                 {dragOffset.x > 50 && (
                   <div className="absolute top-10 left-10 border-4 border-orange-500 rounded-lg px-4 py-2 rotate-[-15deg] opacity-80 pointer-events-none z-10 bg-white/10 backdrop-blur-sm">
-                    <span className="text-orange-500 text-3xl font-black uppercase">Like</span>
+                    <span className="text-orange-500 text-3xl font-black uppercase">Funny</span>
                   </div>
                 )}
                 {dragOffset.x < -50 && (
                   <div className="absolute top-10 right-10 border-4 border-blue-500 rounded-lg px-4 py-2 rotate-[15deg] opacity-80 pointer-events-none z-10 bg-white/10 backdrop-blur-sm">
-                    <span className="text-blue-500 text-3xl font-black uppercase">Nope</span>
+                    <span className="text-blue-500 text-3xl font-black uppercase">Meh</span>
                   </div>
                 )}
               </div>
 
-              {/* Content Section - Takes 35% of the card height */}
+              {/* Content Section - Takes 40% of the card height */}
               <div className="flex-1 p-6 bg-white dark:bg-gray-900 flex flex-col justify-between overflow-y-auto">
                 <div className="space-y-2">
                   <p className="text-xl font-bold leading-tight text-gray-800 dark:text-gray-100">
@@ -257,16 +246,12 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                   <span>{new Date(currentCaption.created_datetime_utc).toLocaleDateString()}</span>
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1 text-orange-500 font-black">
-                      <FiHeart className="fill-current w-3 h-3" />
-                      <span key={`likes-${currentCaption.id}-${getDisplayCounts(currentCaption).likes}`} className="animate-in fade-in zoom-in duration-300">
-                        {getDisplayCounts(currentCaption).likes}
-                      </span>
+                      <FiStar className="fill-current w-3 h-3" />
+                      <span>{currentCaption.avg_score}</span>
                     </span>
                     <span className="flex items-center gap-1 text-blue-500 font-black">
-                      <FiX className="w-3 h-3 stroke-[3]" />
-                      <span key={`dislikes-${currentCaption.id}-${getDisplayCounts(currentCaption).dislikes}`} className="animate-in fade-in zoom-in duration-300">
-                        {getDisplayCounts(currentCaption).dislikes}
-                      </span>
+                      <FiMessageSquare className="w-3 h-3" />
+                      <span>{currentCaption.vote_count}</span>
                     </span>
                   </div>
                 </div>
@@ -283,33 +268,48 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
           </div>
         )}
 
-        {/* Action Buttons - Perfectly centered below the card */}
+        {/* Voting Slider - Perfectly centered below the card */}
         {!isLastCard && (
-          <div className="flex items-center justify-center gap-8 mt-12 w-full">
-            <button 
-              onClick={handleUndo} 
-              disabled={isAnimating || voteHistory.length === 0} 
-              className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:scale-110 active:scale-95 transition-all text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 flex items-center justify-center disabled:opacity-30 disabled:hover:scale-100"
-              aria-label="Undo"
-            >
-              <FiRotateCcw className="w-5 h-5 stroke-[3]" />
-            </button>
-            <button 
-              onClick={() => handleVote(-1)} 
-              disabled={isAnimating} 
-              className="w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:scale-110 active:scale-95 transition-all text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center justify-center"
-              aria-label="Dislike"
-            >
-              <FiX className="w-8 h-8 stroke-[3]" />
-            </button>
-            <button 
-              onClick={() => handleVote(1)} 
-              disabled={isAnimating} 
-              className="w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:scale-110 active:scale-95 transition-all text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 flex items-center justify-center"
-              aria-label="Like"
-            >
-              <FiHeart className="w-8 h-8 fill-current stroke-[3]" />
-            </button>
+          <div className="mt-8 w-full max-w-sm px-4 space-y-6">
+            <div className="text-center">
+              <p className="text-lg font-black text-blue-600 dark:text-blue-400 transition-all duration-200">
+                {SCALE_LABELS[sliderValue]}
+              </p>
+            </div>
+            
+            <input
+              type="range"
+              min="1"
+              max="5"
+              step="1"
+              value={sliderValue}
+              onChange={(e) => setSliderValue(parseInt(e.target.value))}
+              className="w-full h-3 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+            
+            <div className="flex justify-between px-2 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+              <span>Not funny</span>
+              <span>Funny!</span>
+            </div>
+
+            <div className="flex items-center justify-center gap-4 mt-4">
+              <button 
+                onClick={handleUndo} 
+                disabled={isAnimating || voteHistory.length === 0} 
+                className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:scale-110 active:scale-95 transition-all text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 flex items-center justify-center disabled:opacity-30 disabled:hover:scale-100"
+                aria-label="Undo"
+              >
+                <FiRotateCcw className="w-5 h-5 stroke-[3]" />
+              </button>
+              
+              <button 
+                onClick={() => handleVote(sliderValue)} 
+                disabled={isAnimating} 
+                className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              >
+                Submit Vote
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -359,10 +359,10 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
                 <span>{new Date(caption.created_datetime_utc).toLocaleDateString()}</span>
                 <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 dark:bg-gray-800 rounded-full">
                   <span className="flex items-center gap-1 text-orange-500">
-                    <FiHeart className="fill-current w-3 h-3" /> {getDisplayCounts(caption).likes}
+                    <FiStar className="fill-current w-3 h-3" /> {caption.avg_score}
                   </span>
                   <span className="flex items-center gap-1 text-blue-500">
-                    <FiX className="w-3 h-3 stroke-[3]" /> {getDisplayCounts(caption).dislikes}
+                    <FiMessageSquare className="w-3 h-3" /> {caption.vote_count}
                   </span>
                 </div>
               </div>

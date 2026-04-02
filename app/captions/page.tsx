@@ -28,16 +28,13 @@ export default async function CaptionsPage() {
     );
   }
 
-  // 3. Calculate 'likes' and 'dislikes' for each caption
-  const likesMap = (allVotes || []).reduce((acc: Record<string, { likes: number, dislikes: number }>, vote) => {
+  // 3. Calculate average score and total votes for each caption
+  const scoreMap = (allVotes || []).reduce((acc: Record<string, { totalScore: number, count: number }>, vote) => {
     if (!acc[vote.caption_id]) {
-      acc[vote.caption_id] = { likes: 0, dislikes: 0 };
+      acc[vote.caption_id] = { totalScore: 0, count: 0 };
     }
-    if (vote.vote_value === 1) {
-      acc[vote.caption_id].likes += 1;
-    } else if (vote.vote_value === -1) {
-      acc[vote.caption_id].dislikes += 1;
-    }
+    acc[vote.caption_id].totalScore += vote.vote_value;
+    acc[vote.caption_id].count += 1;
     return acc;
   }, {});
 
@@ -58,9 +55,9 @@ export default async function CaptionsPage() {
   // 5. Merge counts and user status into the captions data
   const processedCaptions = (captions || []).map((caption: any) => ({
     ...caption,
-    likes: likesMap[caption.id]?.likes || 0,
-    dislikes: likesMap[caption.id]?.dislikes || 0,
-    user_vote: userVotesMap[caption.id] || 0, // 1 for up, -1 for down, 0 for none
+    avg_score: scoreMap[caption.id]?.count > 0 ? (scoreMap[caption.id].totalScore / scoreMap[caption.id].count).toFixed(1) : 0,
+    vote_count: scoreMap[caption.id]?.count || 0,
+    user_vote: userVotesMap[caption.id] || 0, // 1-5, or 0 for none
   }));
 
   return (
