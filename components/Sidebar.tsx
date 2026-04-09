@@ -37,13 +37,7 @@ export default function Sidebar() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    
-    if (pathname.startsWith('/protected')) {
-      router.push('/hello-world');
-    } else {
-      // If on a public page (like /captions), stay there and refresh to update UI state
-      router.refresh();
-    }
+    router.refresh();
   };
 
   return (
@@ -60,11 +54,6 @@ export default function Sidebar() {
         <Link href="/captions" className="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100">
           Captions List
         </Link>
-        {user && (
-          <Link href="/protected" className="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-            Side Chat Feed
-          </Link>
-        )}
       </nav>
       <div className="p-4 border-t border-gray-200">
         {user ? (

@@ -29,14 +29,9 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // 🔒 Protect gated route
-  if (!user && pathname.startsWith('/protected')) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
   // 🔁 Prevent logged-in users from seeing login page
   if (user && pathname.startsWith('/auth/login')) {
-    return NextResponse.redirect(new URL('/protected', request.url))
+    return NextResponse.redirect(new URL('/captions', request.url))
   }
 
   return response
@@ -44,7 +39,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/protected/:path*',
     '/auth/login',
   ],
 }

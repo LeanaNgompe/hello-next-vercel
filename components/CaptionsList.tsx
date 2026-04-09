@@ -23,11 +23,12 @@ interface Caption {
 }
 
 const SCALE_LABELS: Record<number, string> = {
-  1: 'Not funny at all',
-  2: 'Not very funny',
-  3: 'Indifferent',
-  4: 'Funny',
-  5: 'Very funny',
+  1: 'didnt get it',
+  2: 'not funny at all',
+  3: 'not very funny',
+  4: 'meh',
+  5: 'funny',
+  6: 'very funny',
 };
 
 export default function CaptionsList({ initialCaptions, user }: { initialCaptions: Caption[], user: any }) {
@@ -96,7 +97,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     setVoteHistory(prev => [...prev, { captionId, vote: newValue }]);
 
     // Proceed with animation
-    const direction = newValue >= 4 ? 'right' : newValue <= 2 ? 'left' : 'right'; // Animation direction
+    const direction = newValue >= 5 ? 'right' : newValue <= 3 ? 'left' : 'right'; // Animation direction
     setExitDirection(direction);
     setIsAnimating(true);
 
@@ -143,7 +144,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     setVoteHistory(prev => prev.slice(0, -1));
     
     // 4. Visual feedback animation
-    setDragOffset({ x: lastVote.vote >= 4 ? 120 : -120, y: 0 });
+    setDragOffset({ x: lastVote.vote >= 5 ? 120 : -120, y: 0 });
     setIsAnimating(true);
 
     setTimeout(() => {
@@ -170,7 +171,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
   const onDragEnd = () => {
     if (!dragStart || isAnimating || isLastCard) return;
     const threshold = 150;
-    if (dragOffset.x > threshold) handleVote(5); // Swipe right for "Very funny"
+    if (dragOffset.x > threshold) handleVote(6); // Swipe right for "Very funny"
     else if (dragOffset.x < -threshold) handleVote(1); // Swipe left for "Not funny at all"
     else setDragOffset({ x: 0, y: 0 });
     setDragStart(null);
@@ -280,7 +281,7 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
             <input
               type="range"
               min="1"
-              max="5"
+              max="6"
               step="1"
               value={sliderValue}
               onChange={(e) => setSliderValue(parseInt(e.target.value))}
@@ -336,39 +337,41 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
       </div>
 
       {/* Preview List (Only showing captions with images for consistency) */}
-      <div className="grid gap-6">
+      <div className="space-y-6">
         <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-2">Featured Captions</h3>
-        {captions.slice(0, 10).map((caption) => (
-          <div 
-            key={caption.id} 
-            className="group flex flex-col md:flex-row items-center gap-6 p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all"
-          >
-            <div className="w-full md:w-36 h-28 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
-              <img 
-                src={caption.images?.url} 
-                alt="Caption context" 
-                className="w-full h-full object-cover transition-transform group-hover:scale-105" 
-              />
-            </div>
-            
-            <div className="flex-1 space-y-3 w-full">
-              <p className="text-lg font-bold text-gray-800 dark:text-gray-200 leading-tight">
-                {caption.content}
-              </p>
-              <div className="flex items-center justify-between text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                <span>{new Date(caption.created_datetime_utc).toLocaleDateString()}</span>
-                <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 dark:bg-gray-800 rounded-full">
-                  <span className="flex items-center gap-1 text-orange-500">
-                    <FiStar className="fill-current w-3 h-3" /> {caption.avg_score}
-                  </span>
-                  <span className="flex items-center gap-1 text-blue-500">
-                    <FiMessageSquare className="w-3 h-3" /> {caption.vote_count}
-                  </span>
+        <div className="columns-2 md:columns-3 gap-6 space-y-6">
+          {captions.map((caption) => (
+            <div 
+              key={caption.id} 
+              className="break-inside-avoid group flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all overflow-hidden"
+            >
+              <div className="w-full aspect-[4/5] overflow-hidden bg-gray-100 dark:bg-gray-800">
+                <img 
+                  src={caption.images?.url} 
+                  alt="Caption context" 
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+                />
+              </div>
+              
+              <div className="p-4 space-y-3">
+                <p className="text-base font-bold text-gray-800 dark:text-gray-200 leading-tight">
+                  {caption.content}
+                </p>
+                <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
+                  <span>{new Date(caption.created_datetime_utc).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 text-orange-500">
+                      <FiStar className="fill-current w-2.5 h-2.5" /> {caption.avg_score}
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-500">
+                      <FiMessageSquare className="w-2.5 h-2.5" /> {caption.vote_count}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
         {captions.length === 0 && (
           <p className="text-center text-gray-500 py-10">No captions with images available yet.</p>

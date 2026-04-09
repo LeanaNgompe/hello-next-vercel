@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useCaptionPipeline } from '@/hooks/use-caption-pipeline';
 import { FiUploadCloud, FiLoader, FiAlertCircle, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
 
@@ -58,21 +59,52 @@ export default function CaptionGenerator() {
       )}
 
       {status === 'success' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              <FiCheckCircle className="text-green-500" /> Generated Captions
+        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+              <FiCheckCircle className="text-green-500" /> Pipeline Complete
             </h3>
-            <button onClick={reset} className="flex items-center gap-2 text-sm font-bold text-blue-600">
-              <FiRefreshCw /> New Image
+            <button onClick={reset} className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
+              <FiRefreshCw /> Start Over
             </button>
           </div>
-          <div className="grid gap-3">
+
+          <div className="columns-1 md:columns-2 gap-6 space-y-6">
+            {/* Image Preview Card */}
+            {preview && (
+              <div className="break-inside-avoid bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm">
+                <img src={preview} alt="Generated for" className="w-full object-cover" />
+                <div className="p-4 bg-white dark:bg-gray-900">
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Source Image</p>
+                </div>
+              </div>
+            )}
+
+            {/* Generated Captions */}
             {captions.map((cap, i) => (
-              <div key={i} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-blue-500 transition-colors">
-                <p className="text-gray-800 dark:text-gray-200 font-medium">{cap.content}</p>
+              <div 
+                key={i} 
+                className="break-inside-avoid p-6 bg-white dark:bg-gray-950 rounded-2xl border-2 border-transparent hover:border-blue-500 transition-all shadow-md hover:shadow-xl group"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <span className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-full">
+                    AI Variant {i + 1}
+                  </span>
+                </div>
+                <p className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                  "{cap.content}"
+                </p>
               </div>
             ))}
+          </div>
+
+          <div className="pt-6 flex justify-center">
+            <Link 
+              href="/captions" 
+              className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              View in Public Gallery
+            </Link>
           </div>
         </div>
       )}
