@@ -277,46 +277,34 @@ export default function CaptionsList({
           </div>
         )}
 
-        {/* Voting Slider */}
+        {/* Voting Buttons */}
         {!isLastCard && (
-          <div className="mt-8 w-full max-w-sm px-4 space-y-6">
-            <div className="text-center">
-              <p className="text-lg font-black text-blue-600 dark:text-blue-400 transition-all duration-200">
-                {SCALE_LABELS[sliderValue]}
-              </p>
-            </div>
-            
-            <input
-              type="range"
-              min="1"
-              max="6"
-              step="1"
-              value={sliderValue}
-              onChange={(e) => setSliderValue(parseInt(e.target.value))}
-              className="w-full h-3 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
-            />
-            
-            <div className="flex justify-between px-2 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
-              <span>Not funny</span>
-              <span>Funny!</span>
+          <div className="mt-8 w-full max-w-lg px-4 space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {(Object.entries(SCALE_LABELS) as unknown as [number, string][]).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => handleVote(Number(value))}
+                  disabled={isAnimating}
+                  className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-blue-500 dark:hover:border-blue-500 hover:scale-[1.02] active:scale-[0.98] transition-all group disabled:opacity-50"
+                >
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 group-hover:text-blue-500 transition-colors">
+                    Level {value}
+                  </span>
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-200 text-center leading-tight">
+                    {label}
+                  </span>
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center justify-center gap-4 mt-4">
+            <div className="flex items-center justify-center pt-2">
               <button 
                 onClick={handleUndo} 
                 disabled={isAnimating || voteHistory.length === 0} 
-                className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:scale-110 active:scale-95 transition-all text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 flex items-center justify-center disabled:opacity-30 disabled:hover:scale-100"
-                aria-label="Undo"
+                className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:scale-105 active:scale-95 transition-all text-yellow-600 font-bold text-sm disabled:opacity-30"
               >
-                <FiRotateCcw className="w-5 h-5 stroke-[3]" />
-              </button>
-              
-              <button 
-                onClick={() => handleVote(sliderValue)} 
-                disabled={isAnimating} 
-                className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-              >
-                Submit Vote
+                <FiRotateCcw className="w-4 h-4 stroke-[3]" /> Undo Last Vote
               </button>
             </div>
           </div>

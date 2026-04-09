@@ -93,23 +93,27 @@ export default function CaptionGenerator() {
           <div className="relative group">
             <div className="absolute -inset-4 bg-blue-600/5 rounded-[3rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
             
-            <div className="relative bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-              {/* Image with Caption Overlay */}
+            <div className="relative bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col">
+              {/* Image Section */}
               <div className="relative aspect-[4/5] md:aspect-video w-full bg-gray-100 dark:bg-gray-800">
                 <img 
                   src={preview || ''} 
                   alt="Result" 
                   className="w-full h-full object-cover" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 md:p-12">
-                  <div className="space-y-4 max-w-xl animate-in slide-in-from-bottom duration-500">
+              </div>
+
+              {/* Caption Section - Below Image */}
+              <div className="p-8 md:p-10 bg-white dark:bg-gray-900 border-t border-gray-50 dark:border-gray-800/50">
+                <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
+                  <div className="flex items-center gap-2">
                     <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                      Generated Variant {activeResultIndex + 1}
+                      AI Variant {activeResultIndex + 1}
                     </span>
-                    <p className="text-2xl md:text-4xl font-black text-white leading-tight drop-shadow-2xl">
-                      "{captions[activeResultIndex]?.content}"
-                    </p>
                   </div>
+                  <p className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white leading-tight">
+                    "{captions[activeResultIndex]?.content}"
+                  </p>
                 </div>
               </div>
 
