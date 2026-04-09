@@ -150,14 +150,15 @@ export default function CaptionGenerator() {
                 {!hasVotedCurrent && (
                   <div className="pt-8 border-t border-[#2B2B2B]/10 space-y-4">
                     <span className="text-[10px] font-bold text-[#2B2B2B] tracking-widest uppercase">Editorial Review</span>
-                    <div className="grid grid-cols-5 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       {[2, 3, 4, 5, 6].map((val) => (
                         <button
                           key={val}
                           onClick={() => handleVote(val)}
-                          className="aspect-square flex items-center justify-center border border-[#2B2B2B] text-xs font-bold hover:bg-[#E85C4A] hover:text-[#F5EFE6] transition-all"
+                          className="w-full py-2.5 px-4 border border-[#2B2B2B] text-[10px] font-bold uppercase tracking-widest hover:bg-[#E85C4A] hover:text-[#F5EFE6] transition-all flex justify-between items-center group"
                         >
-                          {val - 1}
+                          <span>{SCALE_LABELS[val]}</span>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity italic">Rank 0{val-1}</span>
                         </button>
                       ))}
                     </div>
