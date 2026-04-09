@@ -53,8 +53,9 @@ export default function CaptionsList({
 }) {
   const processedInitial = useMemo(() => {
     const filtered = initialCaptions.filter(c => c.images?.url);
-    return mode === 'vote' ? shuffleArray(filtered) : filtered;
-  }, [initialCaptions, mode]);
+    // Randomize order for both gallery and vote modes to prevent visual redundancy
+    return shuffleArray(filtered);
+  }, [initialCaptions]);
   
   const [captions, setCaptions] = useState<Caption[]>(processedInitial);
   const [currentIndex, setCurrentIndex] = useState(() => {
