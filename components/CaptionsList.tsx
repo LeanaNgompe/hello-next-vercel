@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { FiRotateCcw, FiLock, FiArrowRight } from 'react-icons/fi';
 import { clsx, type ClassValue } from 'clsx';
@@ -32,6 +32,16 @@ const SCALE_LABELS: Record<number, string> = {
 
 const DIDNT_GET_IT_LABEL = 'didnt get it';
 
+/** Shuffles an array in place (Fisher-Yates) */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export default function CaptionsList({ 
   initialCaptions, 
   user, 
@@ -41,18 +51,33 @@ export default function CaptionsList({
   user: any,
   mode?: 'gallery' | 'vote'
 }) {
-  const votableCaptions = useMemo(() => {
-    return initialCaptions.filter(c => c.images?.url);
-  }, [initialCaptions]);
+  // 1. Filter and optionally randomize
+  const processedInitial = useMemo(() => {
+    const filtered = initialCaptions.filter(c => c.images?.url);
+    // Randomize order if we are in vote mode to prevent image fatigue
+    return mode === 'vote' ? shuffleArray(filtered) : filtered;
+  }, [initialCaptions, mode]);
   
-  const [captions, setCaptions] = useState<Caption[]>(votableCaptions);
+  const [captions, setCaptions] = useState<Caption[]>(processedInitial);
+  
+  // 2. Find the first unvoted item in the shuffled list
   const [currentIndex, setCurrentIndex] = useState(() => {
     if (!user) return 0;
-    const firstUnvoted = votableCaptions.findIndex(c => c.user_vote === 0);
-    return firstUnvoted === -1 ? votableCaptions.length : firstUnvoted;
+    const firstUnvoted = processedInitial.findIndex(c => c.user_vote === 0);
+    return firstUnvoted === -1 ? processedInitial.length : firstUnvoted;
   });
+
   const [voteHistory, setVoteHistory] = useState<{ captionId: string, vote: number }[]>([]);
   const [isVoting, setIsVoting] = useState(false);
+
+  // Sync state if initialCaptions changes (e.g. on navigation)
+  useEffect(() => {
+    setCaptions(processedInitial);
+    if (user) {
+      const firstUnvoted = processedInitial.findIndex(c => c.user_vote === 0);
+      setCurrentIndex(firstUnvoted === -1 ? processedInitial.length : firstUnvoted);
+    }
+  }, [processedInitial, user]);
 
   const currentCaption = captions[currentIndex];
   const isLastCard = currentIndex >= captions.length;
@@ -139,7 +164,7 @@ export default function CaptionsList({
       <div className="flex flex-col items-center max-w-xl mx-auto space-y-4">
         {!isLastCard ? (
           <>
-            {/* Image Preview - Compact fixed height to avoid scrolling */}
+            {/* Image Preview */}
             <div className="relative w-full aspect-[16/10] md:h-72 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden flex-shrink-0">
               {currentCaption.images?.url && (
                 <img 

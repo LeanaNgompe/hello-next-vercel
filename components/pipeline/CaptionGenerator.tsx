@@ -1,29 +1,70 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCaptionPipeline } from '@/hooks/use-caption-pipeline';
+import { supabase } from '@/lib/supabase/client';
 import { 
   FiUploadCloud, 
   FiLoader, 
   FiAlertCircle, 
-  FiCheckCircle, 
   FiRefreshCw, 
   FiArrowLeft, 
   FiArrowRight, 
-  FiGrid 
+  FiGrid,
+  FiCheckCircle,
+  FiThumbsUp
 } from 'react-icons/fi';
+
+const SCALE_LABELS: Record<number, string> = {
+  2: 'not funny at all',
+  3: 'not very funny',
+  4: 'meh',
+  5: 'funny',
+  6: 'very funny',
+};
 
 export default function CaptionGenerator() {
   const { status, progress, captions, error, startPipeline, reset } = useCaptionPipeline();
   const [preview, setPreview] = useState<string | null>(null);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
+  const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setPreview(URL.createObjectURL(file));
       startPipeline(file);
+    }
+  };
+
+  const handleVote = async (val: number) => {
+    if (!user || status !== 'success') return;
+    const captionId = captions[activeResultIndex]?.id;
+    if (!captionId) return;
+
+    const { error } = await supabase
+      .from('caption_votes')
+      .upsert(
+        { 
+          caption_id: captionId, 
+          profile_id: user.id, 
+          vote_value: val, 
+          created_datetime_utc: new Date().toISOString(), 
+          modified_datetime_utc: new Date().toISOString()
+        },
+        { onConflict: 'caption_id,profile_id' }
+      );
+
+    if (!error) {
+      setVotedIds(prev => new Set(prev).add(captionId));
+    } else {
+      alert(`Vote failed: ${error.message}`);
     }
   };
 
@@ -34,6 +75,8 @@ export default function CaptionGenerator() {
   const prevResult = () => {
     setActiveResultIndex((prev) => (prev - 1 + captions.length) % captions.length);
   };
+
+  const hasVotedCurrent = captions[activeResultIndex] ? votedIds.has(captions[activeResultIndex].id) : false;
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -94,7 +137,7 @@ export default function CaptionGenerator() {
             <div className="absolute -inset-4 bg-blue-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
             
             <div className="relative bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col">
-              {/* Image Section - Compact aspect ratio */}
+              {/* Image Section */}
               <div className="relative aspect-[16/10] md:aspect-video w-full bg-gray-100 dark:bg-gray-800">
                 <img 
                   src={preview || ''} 
@@ -103,31 +146,55 @@ export default function CaptionGenerator() {
                 />
               </div>
 
-              {/* Caption Section - Reduced padding */}
+              {/* Caption Section */}
               <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-50 dark:border-gray-800/50">
-                <div className="space-y-2 animate-in slide-in-from-bottom duration-500">
-                  <span className="px-2.5 py-0.5 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                    AI Variant {activeResultIndex + 1}
-                  </span>
+                <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg">
+                      AI Variant {activeResultIndex + 1}
+                    </span>
+                    {hasVotedCurrent && (
+                      <span className="flex items-center gap-1.5 text-green-500 font-black text-[10px] uppercase tracking-widest">
+                        <FiCheckCircle className="w-3 h-3" /> Ranked
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xl md:text-2xl font-black text-gray-900 dark:text-white leading-tight">
                     "{captions[activeResultIndex]?.content}"
                   </p>
+
+                  {/* Immediate Voting Buttons */}
+                  {!hasVotedCurrent && (
+                    <div className="space-y-3 pt-2">
+                      <div className="flex gap-1.5">
+                        {[2, 3, 4, 5, 6].map((val) => (
+                          <button
+                            key={val}
+                            onClick={() => handleVote(val)}
+                            className="flex-1 py-3 px-1 bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-xl hover:border-blue-500 transition-all text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter"
+                          >
+                            {SCALE_LABELS[val]}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handleVote(1)}
+                        className="w-full py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-[10px] font-black text-gray-400 uppercase tracking-widest border border-transparent hover:border-gray-200"
+                      >
+                        didnt get it
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Navigation Controls - Compact padding */}
+              {/* Navigation Controls */}
               <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800">
                 <div className="flex gap-2">
-                  <button 
-                    onClick={prevResult}
-                    className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
-                  >
+                  <button onClick={prevResult} className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95">
                     <FiArrowLeft className="w-4 h-4" />
                   </button>
-                  <button 
-                    onClick={nextResult}
-                    className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
-                  >
+                  <button onClick={nextResult} className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95">
                     <FiArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -144,30 +211,27 @@ export default function CaptionGenerator() {
                   ))}
                 </div>
 
-                <button 
-                  onClick={reset} 
-                  className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-black text-xs border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
-                >
+                <button onClick={reset} className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-black text-xs border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                   <FiRefreshCw className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons - Compact */}
+          {/* Action Buttons */}
           <div className="flex flex-col md:flex-row items-center justify-center gap-3">
+            <Link 
+              href="/captions/vote" 
+              className="w-full md:w-auto px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-[1.5rem] font-black transition-all shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+            >
+              <FiThumbsUp className="w-4 h-4" /> Rank Community Pool
+            </Link>
             <Link 
               href="/captions" 
               className="w-full md:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
             >
               <FiGrid className="w-4 h-4" /> View in Public Gallery
             </Link>
-            <button 
-              onClick={reset}
-              className="w-full md:hidden flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-[1.5rem] font-black border border-gray-100 dark:border-gray-800 shadow-lg text-sm"
-            >
-              <FiRefreshCw /> Try Another
-            </button>
           </div>
         </div>
       )}
