@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase/client';
-import { FiRotateCcw, FiStar, FiLock, FiMessageSquare } from 'react-icons/fi';
+import { FiRotateCcw, FiStar, FiLock, FiMessageSquare, FiArrowRight } from 'react-icons/fi';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Link from 'next/link';
@@ -31,7 +31,15 @@ const SCALE_LABELS: Record<number, string> = {
   6: 'very funny',
 };
 
-export default function CaptionsList({ initialCaptions, user }: { initialCaptions: Caption[], user: any }) {
+export default function CaptionsList({ 
+  initialCaptions, 
+  user, 
+  mode = 'gallery' 
+}: { 
+  initialCaptions: Caption[], 
+  user: any,
+  mode?: 'gallery' | 'vote'
+}) {
   // Only allow voting on captions that have an image
   const votableCaptions = useMemo(() => {
     return initialCaptions.filter(c => c.images?.url);
@@ -187,8 +195,8 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     return { transform: 'translate(0,0) rotate(0)', transition: 'all 0.3s ease-out' };
   };
 
-  // --- RENDERING FOR LOGGED IN USERS (TINDER UI) ---
-  if (user) {
+  // --- TINDER UI (VOTE MODE) ---
+  if (mode === 'vote' && user) {
     return (
       <div className="flex flex-col items-center justify-center py-10 min-h-[70vh]">
         {!isLastCard ? (
@@ -263,13 +271,13 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
           <div className="text-center space-y-6 py-20 bg-white dark:bg-gray-900 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 w-full max-w-sm px-6">
             <div className="text-5xl mb-4">🎉</div>
             <h2 className="text-2xl font-black text-gray-900 dark:text-white">You've seen them all!</h2>
-            <button onClick={() => setCurrentIndex(0)} className="flex items-center justify-center gap-2 mx-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold transition-all shadow-lg hover:shadow-blue-500/25">
-              <FiRotateCcw /> Rewatch
-            </button>
+            <Link href="/captions" className="flex items-center justify-center gap-2 mx-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold transition-all shadow-lg hover:shadow-blue-500/25">
+              Browse Gallery
+            </Link>
           </div>
         )}
 
-        {/* Voting Slider - Perfectly centered below the card */}
+        {/* Voting Slider */}
         {!isLastCard && (
           <div className="mt-8 w-full max-w-sm px-4 space-y-6">
             <div className="text-center">
@@ -317,40 +325,60 @@ export default function CaptionsList({ initialCaptions, user }: { initialCaption
     );
   }
 
-  // --- RENDERING FOR GUESTS (LIST VIEW) ---
+  // --- MASONRY GALLERY (GALLERY MODE) ---
   return (
-    <div className="space-y-12 max-w-2xl mx-auto">
-      {/* Login Prompt CTA */}
-      <div className="bg-blue-600 rounded-3xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-500/20">
-        <div className="space-y-2 text-center md:text-left">
-          <h2 className="text-2xl font-black flex items-center justify-center md:justify-start gap-2">
-            <FiLock className="w-6 h-6" /> Join the Community
-          </h2>
-          <p className="text-blue-100 font-medium">Log in to start voting and unlock the discovery experience.</p>
+    <div className="space-y-12">
+      {!user && (
+        <div className="bg-blue-600 rounded-3xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-500/20 max-w-4xl mx-auto">
+          <div className="space-y-2 text-center md:text-left">
+            <h2 className="text-2xl font-black flex items-center justify-center md:justify-start gap-2">
+              <FiLock className="w-6 h-6" /> Join the Community
+            </h2>
+            <p className="text-blue-100 font-medium">Log in to start voting and unlock the discovery experience.</p>
+          </div>
+          <Link 
+            href="/auth/login" 
+            className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-black hover:bg-gray-100 transition-all shadow-lg shadow-black/10 flex-shrink-0"
+          >
+            Log In to Vote
+          </Link>
         </div>
-        <Link 
-          href="/auth/login" 
-          className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-black hover:bg-gray-100 transition-all shadow-lg shadow-black/10 flex-shrink-0"
-        >
-          Log In to Vote
-        </Link>
-      </div>
+      )}
 
-      {/* Preview List (Only showing captions with images for consistency) */}
+      {user && mode === 'gallery' && (
+        <div className="bg-gray-900 rounded-3xl p-6 text-white flex items-center justify-between gap-6 shadow-xl max-w-4xl mx-auto border border-gray-800">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-2xl">🗳️</div>
+            <div>
+              <h3 className="font-black text-lg">Ready to rank?</h3>
+              <p className="text-gray-400 text-sm font-medium">Help us find the funniest captions of the day.</p>
+            </div>
+          </div>
+          <Link 
+            href="/captions/vote" 
+            className="px-6 py-3 bg-white text-gray-900 rounded-xl font-black hover:bg-gray-100 transition-all flex items-center gap-2"
+          >
+            Vote Now <FiArrowRight />
+          </Link>
+        </div>
+      )}
+
       <div className="space-y-6">
-        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-2">Featured Captions</h3>
-        <div className="columns-2 md:columns-3 gap-6 space-y-6">
+        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-2">Featured Gallery</h3>
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
           {captions.map((caption) => (
             <div 
               key={caption.id} 
               className="break-inside-avoid group flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all overflow-hidden"
             >
               <div className="w-full aspect-[4/5] overflow-hidden bg-gray-100 dark:bg-gray-800">
-                <img 
-                  src={caption.images?.url} 
-                  alt="Caption context" 
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105" 
-                />
+                {caption.images?.url && (
+                  <img 
+                    src={caption.images.url} 
+                    alt="Caption context" 
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+                  />
+                )}
               </div>
               
               <div className="p-4 space-y-3">

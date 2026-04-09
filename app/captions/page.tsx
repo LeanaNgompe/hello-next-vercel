@@ -93,7 +93,7 @@ export default async function CaptionsPage() {
           )}
         </header>
         
-        <CaptionsList initialCaptions={processedCaptions} user={user} />
+        <CaptionsList initialCaptions={processedCaptions} user={user} mode="gallery" />
       </div>
     </main>
   );

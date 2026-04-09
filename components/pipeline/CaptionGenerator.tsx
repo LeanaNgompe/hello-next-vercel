@@ -3,11 +3,21 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useCaptionPipeline } from '@/hooks/use-caption-pipeline';
-import { FiUploadCloud, FiLoader, FiAlertCircle, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
+import { 
+  FiUploadCloud, 
+  FiLoader, 
+  FiAlertCircle, 
+  FiCheckCircle, 
+  FiRefreshCw, 
+  FiArrowLeft, 
+  FiArrowRight, 
+  FiGrid 
+} from 'react-icons/fi';
 
 export default function CaptionGenerator() {
   const { status, progress, captions, error, startPipeline, reset } = useCaptionPipeline();
   const [preview, setPreview] = useState<string | null>(null);
+  const [activeResultIndex, setActiveResultIndex] = useState(0);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -17,97 +27,152 @@ export default function CaptionGenerator() {
     }
   };
 
+  const nextResult = () => {
+    setActiveResultIndex((prev) => (prev + 1) % captions.length);
+  };
+
+  const prevResult = () => {
+    setActiveResultIndex((prev) => (prev - 1 + captions.length) % captions.length);
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800">
+    <div className="w-full max-w-2xl mx-auto">
       {status === 'idle' && (
-        <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <FiUploadCloud className="w-12 h-12 text-gray-400 mb-4" />
-            <p className="text-lg font-bold text-gray-600 dark:text-gray-300">Click to upload image</p>
-            <p className="text-sm text-gray-400">PNG, JPG, WEBP, GIF or HEIC</p>
-          </div>
-          <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-        </label>
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800">
+          <label className="flex flex-col items-center justify-center w-full h-80 border-4 border-dashed border-gray-100 dark:border-gray-800 rounded-[2rem] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all group">
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <FiUploadCloud className="w-10 h-10 text-blue-600" />
+              </div>
+              <p className="text-xl font-black text-gray-900 dark:text-white mb-2">Drop your image here</p>
+              <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">or click to browse</p>
+            </div>
+            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+          </label>
+        </div>
       )}
 
       {(status !== 'idle' && status !== 'success') && (
-        <div className="space-y-6">
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 space-y-8">
           {preview && (
-            <img src={preview} alt="Preview" className="w-full h-48 object-cover rounded-xl opacity-50" />
-          )}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm font-bold uppercase tracking-widest text-gray-500">
-              <span className="flex items-center gap-2">
-                <FiLoader className="animate-spin" /> {status}...
-              </span>
-              <span>{progress}%</span>
+            <div className="relative aspect-video w-full rounded-3xl overflow-hidden shadow-lg border border-gray-100 dark:border-gray-800">
+              <img src={preview} alt="Preview" className="w-full h-full object-cover opacity-60 grayscale-[0.5]" />
+              <div className="absolute inset-0 bg-blue-600/10 backdrop-blur-[2px] flex items-center justify-center">
+                <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin" />
+              </div>
             </div>
-            <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
+          )}
+          <div className="space-y-4">
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-sm font-black text-blue-600 uppercase tracking-widest mb-1">{status}</p>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">AI is working...</h3>
+              </div>
+              <span className="text-3xl font-black text-gray-900 dark:text-white leading-none">{progress}%</span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-4 p-1 overflow-hidden">
               <div 
-                className="bg-blue-600 h-full transition-all duration-500" 
+                className="bg-blue-600 h-full rounded-full transition-all duration-500 shadow-lg shadow-blue-500/50" 
                 style={{ width: `${progress}%` }} 
               />
             </div>
           </div>
           {status === 'error' && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl flex items-center gap-3">
-              <FiAlertCircle /> <span className="font-medium">{error}</span>
-              <button onClick={reset} className="ml-auto underline">Retry</button>
+            <div className="p-6 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-3xl flex items-center gap-4 border border-red-100 dark:border-red-900/30">
+              <FiAlertCircle className="w-6 h-6 flex-shrink-0" />
+              <span className="font-bold">{error}</span>
+              <button onClick={reset} className="ml-auto px-4 py-2 bg-white dark:bg-gray-900 rounded-xl text-sm font-black shadow-sm">Retry</button>
             </div>
           )}
         </div>
       )}
 
       {status === 'success' && (
-        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              <FiCheckCircle className="text-green-500" /> Pipeline Complete
-            </h3>
-            <button onClick={reset} className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
-              <FiRefreshCw /> Start Over
-            </button>
-          </div>
-
-          <div className="columns-1 md:columns-2 gap-6 space-y-6">
-            {/* Image Preview Card */}
-            {preview && (
-              <div className="break-inside-avoid bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm">
-                <img src={preview} alt="Generated for" className="w-full object-cover" />
-                <div className="p-4 bg-white dark:bg-gray-900">
-                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Source Image</p>
+        <div className="space-y-10 animate-in fade-in zoom-in duration-700">
+          {/* Result Card Slider */}
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-blue-600/5 rounded-[3rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+            
+            <div className="relative bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+              {/* Image with Caption Overlay */}
+              <div className="relative aspect-[4/5] md:aspect-video w-full bg-gray-100 dark:bg-gray-800">
+                <img 
+                  src={preview || ''} 
+                  alt="Result" 
+                  className="w-full h-full object-cover" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 md:p-12">
+                  <div className="space-y-4 max-w-xl animate-in slide-in-from-bottom duration-500">
+                    <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
+                      Generated Variant {activeResultIndex + 1}
+                    </span>
+                    <p className="text-2xl md:text-4xl font-black text-white leading-tight drop-shadow-2xl">
+                      "{captions[activeResultIndex]?.content}"
+                    </p>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Generated Captions */}
-            {captions.map((cap, i) => (
-              <div 
-                key={i} 
-                className="break-inside-avoid p-6 bg-white dark:bg-gray-950 rounded-2xl border-2 border-transparent hover:border-blue-500 transition-all shadow-md hover:shadow-xl group"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <span className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-full">
-                    AI Variant {i + 1}
-                  </span>
+              {/* Navigation Controls */}
+              <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex gap-3">
+                  <button 
+                    onClick={prevResult}
+                    className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+                  >
+                    <FiArrowLeft className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={nextResult}
+                    className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+                  >
+                    <FiArrowRight className="w-5 h-5" />
+                  </button>
                 </div>
-                <p className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">
-                  "{cap.content}"
-                </p>
+                
+                <div className="flex items-center gap-1.5">
+                  {captions.map((_, i) => (
+                    <div 
+                      key={i} 
+                      className={cn(
+                        "h-2 rounded-full transition-all duration-300",
+                        i === activeResultIndex ? "w-8 bg-blue-600" : "w-2 bg-gray-300 dark:bg-gray-700"
+                      )} 
+                    />
+                  ))}
+                </div>
+
+                <button 
+                  onClick={reset} 
+                  className="hidden md:flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl font-black text-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                >
+                  <FiRefreshCw className="w-4 h-4" /> New Image
+                </button>
               </div>
-            ))}
+            </div>
           </div>
 
-          <div className="pt-6 flex justify-center">
+          {/* Action Buttons */}
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
             <Link 
               href="/captions" 
-              className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full md:w-auto px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
             >
-              View in Public Gallery
+              <FiGrid className="w-5 h-5" /> View in Public Gallery
             </Link>
+            <button 
+              onClick={reset}
+              className="w-full md:hidden flex items-center justify-center gap-2 px-10 py-5 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-3xl font-black border border-gray-100 dark:border-gray-800 shadow-xl"
+            >
+              <FiRefreshCw /> Try Another
+            </button>
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
 }
