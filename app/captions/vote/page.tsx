@@ -14,13 +14,11 @@ export default async function VotePage() {
     redirect('/auth/login');
   }
 
-  // 1. Fetch all captions with related images
   const { data: captions, error: captionsError } = await supabase
     .from('captions')
     .select('*, images(url)')
     .order('created_datetime_utc', { ascending: false });
 
-  // 2. Fetch all votes to calculate averages
   const { data: allVotes, error: votesError } = await supabase
     .from('caption_votes')
     .select('caption_id, vote_value');
@@ -28,8 +26,8 @@ export default async function VotePage() {
   if (captionsError || votesError) {
     console.error('Data fetching error:', captionsError || votesError);
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-red-500 font-medium">
-        Unable to load content. Please try again.
+      <div className="flex items-center justify-center min-h-[400px] text-[#E85C4A] font-bold uppercase tracking-widest text-xs">
+        System offline. Try again.
       </div>
     );
   }
@@ -43,7 +41,6 @@ export default async function VotePage() {
     return acc;
   }, {});
 
-  // 3. User's specific votes
   const { data: myVotes } = await supabase
     .from('caption_votes')
     .select('caption_id, vote_value')
@@ -62,23 +59,24 @@ export default async function VotePage() {
   }));
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <header className="mb-10 space-y-4">
-          <Link 
-            href="/captions" 
-            className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            <FiArrowLeft /> Back to Gallery
-          </Link>
-          <div className="space-y-2 text-center md:text-left">
-            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-              Vote & Rank
+    <main className="min-h-screen pb-20">
+      <div className="max-w-5xl mx-auto px-6 pt-20">
+        <header className="mb-16 text-center space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-6xl font-black tracking-tighter text-[#2B2B2B] italic">
+              VOTING TERMINAL
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              Help the community find the best captions.
+            <p className="text-[#8C8C8C] text-xs font-bold uppercase tracking-[0.4em]">
+              Editorial Review / Consensus Protocol
             </p>
           </div>
+          
+          <Link 
+            href="/captions" 
+            className="inline-flex items-center gap-2 text-[10px] font-black text-[#8C8C8C] uppercase tracking-widest hover:text-[#2B2B2B] transition-colors"
+          >
+            <FiArrowLeft /> Exit to Archives
+          </Link>
         </header>
         
         <CaptionsList initialCaptions={processedCaptions} user={user} mode="vote" />

@@ -8,13 +8,11 @@ export default async function CaptionsPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 1. Fetch all captions with related images (images.url)
   const { data: captions, error: captionsError } = await supabase
     .from('captions')
     .select('*, images(url)')
     .order('created_datetime_utc', { ascending: false });
 
-  // 2. Fetch all votes from 'caption_votes' to calculate 'like_count'
   const { data: allVotes, error: votesError } = await supabase
     .from('caption_votes')
     .select('caption_id, vote_value');
@@ -22,13 +20,12 @@ export default async function CaptionsPage() {
   if (captionsError || votesError) {
     console.error('Data fetching error:', captionsError || votesError);
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-red-500 font-medium">
-        Unable to load captions. Please check your connection.
+      <div className="flex items-center justify-center min-h-[400px] text-[#E85C4A] font-bold uppercase tracking-widest text-xs">
+        System offline. Check connection.
       </div>
     );
   }
 
-  // 3. Calculate average score and total votes for each caption
   const scoreMap = (allVotes || []).reduce((acc: Record<string, { totalScore: number, count: number }>, vote) => {
     if (!acc[vote.caption_id]) {
       acc[vote.caption_id] = { totalScore: 0, count: 0 };
@@ -38,7 +35,6 @@ export default async function CaptionsPage() {
     return acc;
   }, {});
 
-  // 4. Fetch the current user's specific votes for active button states
   let userVotesMap: Record<string, number> = {};
   if (user) {
     const { data: myVotes } = await supabase
@@ -52,44 +48,35 @@ export default async function CaptionsPage() {
     }, {});
   }
 
-  // 5. Merge counts and user status into the captions data
   const processedCaptions = (captions || []).map((caption: any) => ({
     ...caption,
     avg_score: scoreMap[caption.id]?.count > 0 ? (scoreMap[caption.id].totalScore / scoreMap[caption.id].count).toFixed(1) : 0,
     vote_count: scoreMap[caption.id]?.count || 0,
-    user_vote: userVotesMap[caption.id] || 0, // 1-5, or 0 for none
+    user_vote: userVotesMap[caption.id] || 0,
   }));
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <main className="min-h-screen pb-20">
+      <div className="max-w-7xl mx-auto px-6 pt-20">
+        <header className="mb-24 text-center space-y-6">
           <div className="space-y-2">
-            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-              Caption Gallery
+            <h1 className="text-7xl font-black tracking-tighter text-[#2B2B2B] italic">
+              THE GALLERY
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              Explore and vote for the community's best captions.
+            <p className="text-[#8C8C8C] text-sm font-bold uppercase tracking-[0.4em] max-w-lg mx-auto">
+              Curated Community Submissions / Volume 01
             </p>
-            {user && processedCaptions.length === 0 && (
-              <p className="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded-lg text-sm font-medium border border-yellow-200 dark:border-yellow-800">
-                DEBUG: No captions were returned from the database. This is likely an RLS issue.
-              </p>
-            )}
-            {user && processedCaptions.length > 0 && processedCaptions.every(c => c.user_vote !== 0) && (
-              <p className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-medium border border-blue-200 dark:border-blue-800">
-                DEBUG: You have already voted on all {processedCaptions.length} captions in the database.
-              </p>
-            )}
           </div>
           
           {user && (
-            <Link 
-              href="/captions/new"
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
-            >
-              <span>Create New</span>
-            </Link>
+            <div className="pt-4">
+              <Link 
+                href="/captions/new"
+                className="inline-block px-10 py-4 border border-[#2B2B2B] text-[#2B2B2B] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#2B2B2B] hover:text-[#F5EFE6] transition-all"
+              >
+                Submit New Entry
+              </Link>
+            </div>
           )}
         </header>
         

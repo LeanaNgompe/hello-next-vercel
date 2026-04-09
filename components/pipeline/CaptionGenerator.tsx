@@ -79,16 +79,19 @@ export default function CaptionGenerator() {
   const hasVotedCurrent = captions[activeResultIndex] ? votedIds.has(captions[activeResultIndex].id) : false;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto space-y-10">
+      <div className="text-center space-y-2">
+        <h2 className="text-4xl font-black italic tracking-tight text-[#2B2B2B]">CAPTION ENGINE</h2>
+        <p className="text-[#8C8C8C] text-xs font-bold uppercase tracking-[0.2em]">Volume 01 / AI Pipeline</p>
+      </div>
+
       {status === 'idle' && (
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800">
-          <label className="flex flex-col items-center justify-center w-full h-80 border-4 border-dashed border-gray-100 dark:border-gray-800 rounded-[2rem] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all group">
+        <div className="bg-[#FAF7F2] p-10 border border-[#2B2B2B] rounded-sm">
+          <label className="flex flex-col items-center justify-center w-full h-80 border-2 border-dashed border-[#2B2B2B]/20 rounded-sm cursor-pointer hover:bg-[#E8E2D9] transition-all group">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <FiUploadCloud className="w-10 h-10 text-blue-600" />
-              </div>
-              <p className="text-xl font-black text-gray-900 dark:text-white mb-2">Drop your image here</p>
-              <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">or click to browse</p>
+              <FiUploadCloud className="w-12 h-12 text-[#2B2B2B] mb-4 opacity-20 group-hover:opacity-100 transition-opacity" />
+              <p className="text-sm font-bold text-[#2B2B2B] uppercase tracking-widest mb-2">Drop Image Asset</p>
+              <p className="text-[10px] text-[#8C8C8C] font-bold uppercase tracking-[0.2em]">Source file required</p>
             </div>
             <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
           </label>
@@ -96,149 +99,104 @@ export default function CaptionGenerator() {
       )}
 
       {(status !== 'idle' && status !== 'success') && (
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 space-y-8">
-          {preview && (
-            <div className="relative aspect-video w-full rounded-3xl overflow-hidden shadow-lg border border-gray-100 dark:border-gray-800">
-              <img src={preview} alt="Preview" className="w-full h-full object-cover opacity-60 grayscale-[0.5]" />
-              <div className="absolute inset-0 bg-blue-600/10 backdrop-blur-[2px] flex items-center justify-center">
-                <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin" />
-              </div>
+        <div className="bg-[#FAF7F2] p-10 border border-[#2B2B2B] rounded-sm space-y-8">
+          <div className="relative aspect-video w-full border border-[#2B2B2B] rounded-sm overflow-hidden grayscale">
+            {preview && <img src={preview} alt="Preview" className="w-full h-full object-cover opacity-40" />}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <FiLoader className="w-8 h-8 text-[#2B2B2B] animate-spin" />
             </div>
-          )}
+          </div>
           <div className="space-y-4">
             <div className="flex justify-between items-end">
-              <div>
-                <p className="text-sm font-black text-blue-600 uppercase tracking-widest mb-1">{status}</p>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">AI is working...</h3>
-              </div>
-              <span className="text-3xl font-black text-gray-900 dark:text-white leading-none">{progress}%</span>
+              <span className="text-[10px] font-black text-[#2B2B2B] uppercase tracking-widest">{status}</span>
+              <span className="text-2xl font-black text-[#2B2B2B]">{progress}%</span>
             </div>
-            <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-4 p-1 overflow-hidden">
-              <div 
-                className="bg-blue-600 h-full rounded-full transition-all duration-500 shadow-lg shadow-blue-500/50" 
-                style={{ width: `${progress}%` }} 
-              />
+            <div className="w-full h-1 bg-[#E8E2D9]">
+              <div className="h-full bg-[#2B2B2B] transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
           </div>
           {status === 'error' && (
-            <div className="p-6 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-3xl flex items-center gap-4 border border-red-100 dark:border-red-900/30">
-              <FiAlertCircle className="w-6 h-6 flex-shrink-0" />
-              <span className="font-bold">{error}</span>
-              <button onClick={reset} className="ml-auto px-4 py-2 bg-white dark:bg-gray-900 rounded-xl text-sm font-black shadow-sm">Retry</button>
+            <div className="p-4 bg-[#E85C4A]/10 text-[#E85C4A] border border-[#E85C4A] text-xs font-bold uppercase tracking-widest flex items-center gap-3">
+              <FiAlertCircle /> <span>{error}</span>
+              <button onClick={reset} className="ml-auto underline">Retry</button>
             </div>
           )}
         </div>
       )}
 
       {status === 'success' && (
-        <div className="space-y-6 animate-in fade-in zoom-in duration-700">
-          {/* Result Card Slider */}
-          <div className="relative group max-w-xl mx-auto">
-            <div className="absolute -inset-4 bg-blue-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-            
-            <div className="relative bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col">
-              {/* Image Section */}
-              <div className="relative aspect-[16/10] md:aspect-video w-full bg-gray-100 dark:bg-gray-800">
-                <img 
-                  src={preview || ''} 
-                  alt="Result" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
+        <div className="space-y-10 animate-in fade-in duration-700">
+          <div className="relative bg-[#FAF7F2] border border-[#2B2B2B] rounded-sm overflow-hidden flex flex-col">
+            <div className="relative aspect-[16/10] md:aspect-video w-full bg-[#E8E2D9]">
+              <img src={preview || ''} alt="Result" className="w-full h-full object-cover grayscale-[0.2]" />
+            </div>
 
-              {/* Caption Section */}
-              <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-50 dark:border-gray-800/50">
-                <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                      AI Variant {activeResultIndex + 1}
+            <div className="p-10 border-t border-[#2B2B2B] bg-[#FAF7F2] space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#E85C4A] uppercase tracking-widest italic">
+                    AI Variant 0{activeResultIndex + 1}
+                  </span>
+                  {hasVotedCurrent && (
+                    <span className="text-[10px] font-bold text-[#2B2B2B] uppercase tracking-widest flex items-center gap-2">
+                      <FiCheckCircle className="w-3 h-3 text-[#E85C4A]" /> Archive Entry Recorded
                     </span>
-                    {hasVotedCurrent && (
-                      <span className="flex items-center gap-1.5 text-green-500 font-black text-[10px] uppercase tracking-widest">
-                        <FiCheckCircle className="w-3 h-3" /> Ranked
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xl md:text-2xl font-black text-gray-900 dark:text-white leading-tight">
-                    "{captions[activeResultIndex]?.content}"
-                  </p>
-
-                  {/* Immediate Voting Buttons */}
-                  {!hasVotedCurrent && (
-                    <div className="space-y-3 pt-2">
-                      <div className="flex gap-1.5">
-                        {[2, 3, 4, 5, 6].map((val) => (
-                          <button
-                            key={val}
-                            onClick={() => handleVote(val)}
-                            className="flex-1 py-3 px-1 bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-xl hover:border-blue-500 transition-all text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter"
-                          >
-                            {SCALE_LABELS[val]}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => handleVote(1)}
-                        className="w-full py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-[10px] font-black text-gray-400 uppercase tracking-widest border border-transparent hover:border-gray-200"
-                      >
-                        didnt get it
-                      </button>
-                    </div>
                   )}
                 </div>
+                <p className="text-3xl font-black text-[#2B2B2B] leading-tight italic">
+                  "{captions[activeResultIndex]?.content}"
+                </p>
+
+                {!hasVotedCurrent && (
+                  <div className="pt-8 border-t border-[#2B2B2B]/10 space-y-4">
+                    <span className="text-[10px] font-bold text-[#2B2B2B] tracking-widest uppercase">Editorial Review</span>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[2, 3, 4, 5, 6].map((val) => (
+                        <button
+                          key={val}
+                          onClick={() => handleVote(val)}
+                          className="aspect-square flex items-center justify-center border border-[#2B2B2B] text-xs font-bold hover:bg-[#E85C4A] hover:text-[#F5EFE6] transition-all"
+                        >
+                          {val - 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* Navigation Controls */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800">
-                <div className="flex gap-2">
-                  <button onClick={prevResult} className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95">
-                    <FiArrowLeft className="w-4 h-4" />
-                  </button>
-                  <button onClick={nextResult} className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95">
-                    <FiArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="flex items-center gap-1">
-                  {captions.map((_, i) => (
-                    <div 
-                      key={i} 
-                      className={cn(
-                        "h-1.5 rounded-full transition-all duration-300",
-                        i === activeResultIndex ? "w-6 bg-blue-600" : "w-1.5 bg-gray-300 dark:bg-gray-700"
-                      )} 
-                    />
-                  ))}
-                </div>
-
-                <button onClick={reset} className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-black text-xs border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                  <FiRefreshCw className="w-3.5 h-3.5" />
+            <div className="flex items-center justify-between p-6 border-t border-[#2B2B2B] bg-[#E8E2D9]/30">
+              <div className="flex gap-2">
+                <button onClick={prevResult} className="w-10 h-10 border border-[#2B2B2B] flex items-center justify-center hover:bg-[#2B2B2B] hover:text-[#F5EFE6] transition-all">
+                  <FiArrowLeft />
+                </button>
+                <button onClick={nextResult} className="w-10 h-10 border border-[#2B2B2B] flex items-center justify-center hover:bg-[#2B2B2B] hover:text-[#F5EFE6] transition-all">
+                  <FiArrowRight />
                 </button>
               </div>
+              <button onClick={reset} className="px-6 py-2 border border-[#2B2B2B] text-[10px] font-bold uppercase tracking-widest hover:bg-[#2B2B2B] hover:text-[#F5EFE6] transition-all">
+                Restart Pipeline
+              </button>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col md:flex-row items-center justify-center gap-3">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
             <Link 
               href="/captions/vote" 
-              className="w-full md:w-auto px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-[1.5rem] font-black transition-all shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+              className="w-full md:w-auto px-10 py-4 bg-[#2B2B2B] text-[#F5EFE6] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#E85C4A] transition-all text-center"
             >
-              <FiThumbsUp className="w-4 h-4" /> Rank Community Pool
+              Enter Global Feed
             </Link>
             <Link 
               href="/captions" 
-              className="w-full md:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+              className="w-full md:w-auto px-10 py-4 border border-[#2B2B2B] text-[#2B2B2B] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#2B2B2B] hover:text-[#F5EFE6] transition-all text-center"
             >
-              <FiGrid className="w-4 h-4" /> View in Public Gallery
+              Public Archives
             </Link>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }
