@@ -88,14 +88,14 @@ export default function CaptionGenerator() {
       )}
 
       {status === 'success' && (
-        <div className="space-y-10 animate-in fade-in zoom-in duration-700">
+        <div className="space-y-6 animate-in fade-in zoom-in duration-700">
           {/* Result Card Slider */}
-          <div className="relative group">
-            <div className="absolute -inset-4 bg-blue-600/5 rounded-[3rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative group max-w-xl mx-auto">
+            <div className="absolute -inset-4 bg-blue-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
             
-            <div className="relative bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col">
-              {/* Image Section */}
-              <div className="relative aspect-[4/5] md:aspect-video w-full bg-gray-100 dark:bg-gray-800">
+            <div className="relative bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col">
+              {/* Image Section - Compact aspect ratio */}
+              <div className="relative aspect-[16/10] md:aspect-video w-full bg-gray-100 dark:bg-gray-800">
                 <img 
                   src={preview || ''} 
                   alt="Result" 
@@ -103,44 +103,42 @@ export default function CaptionGenerator() {
                 />
               </div>
 
-              {/* Caption Section - Below Image */}
-              <div className="p-8 md:p-10 bg-white dark:bg-gray-900 border-t border-gray-50 dark:border-gray-800/50">
-                <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                      AI Variant {activeResultIndex + 1}
-                    </span>
-                  </div>
-                  <p className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white leading-tight">
+              {/* Caption Section - Reduced padding */}
+              <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-50 dark:border-gray-800/50">
+                <div className="space-y-2 animate-in slide-in-from-bottom duration-500">
+                  <span className="px-2.5 py-0.5 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg">
+                    AI Variant {activeResultIndex + 1}
+                  </span>
+                  <p className="text-xl md:text-2xl font-black text-gray-900 dark:text-white leading-tight">
                     "{captions[activeResultIndex]?.content}"
                   </p>
                 </div>
               </div>
 
-              {/* Navigation Controls */}
-              <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800">
-                <div className="flex gap-3">
+              {/* Navigation Controls - Compact padding */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex gap-2">
                   <button 
                     onClick={prevResult}
-                    className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+                    className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
                   >
-                    <FiArrowLeft className="w-5 h-5" />
+                    <FiArrowLeft className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={nextResult}
-                    className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+                    className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
                   >
-                    <FiArrowRight className="w-5 h-5" />
+                    <FiArrowRight className="w-4 h-4" />
                   </button>
                 </div>
                 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {captions.map((_, i) => (
                     <div 
                       key={i} 
                       className={cn(
-                        "h-2 rounded-full transition-all duration-300",
-                        i === activeResultIndex ? "w-8 bg-blue-600" : "w-2 bg-gray-300 dark:bg-gray-700"
+                        "h-1.5 rounded-full transition-all duration-300",
+                        i === activeResultIndex ? "w-6 bg-blue-600" : "w-1.5 bg-gray-300 dark:bg-gray-700"
                       )} 
                     />
                   ))}
@@ -148,25 +146,25 @@ export default function CaptionGenerator() {
 
                 <button 
                   onClick={reset} 
-                  className="hidden md:flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl font-black text-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                  className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-black text-xs border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
                 >
-                  <FiRefreshCw className="w-4 h-4" /> New Image
+                  <FiRefreshCw className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+          {/* Action Buttons - Compact */}
+          <div className="flex flex-col md:flex-row items-center justify-center gap-3">
             <Link 
               href="/captions" 
-              className="w-full md:w-auto px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+              className="w-full md:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
             >
-              <FiGrid className="w-5 h-5" /> View in Public Gallery
+              <FiGrid className="w-4 h-4" /> View in Public Gallery
             </Link>
             <button 
               onClick={reset}
-              className="w-full md:hidden flex items-center justify-center gap-2 px-10 py-5 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-3xl font-black border border-gray-100 dark:border-gray-800 shadow-xl"
+              className="w-full md:hidden flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-[1.5rem] font-black border border-gray-100 dark:border-gray-800 shadow-lg text-sm"
             >
               <FiRefreshCw /> Try Another
             </button>

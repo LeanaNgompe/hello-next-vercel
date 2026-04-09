@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase/client';
-import { FiRotateCcw, FiStar, FiLock, FiMessageSquare, FiArrowRight } from 'react-icons/fi';
+import { FiRotateCcw, FiLock, FiArrowRight } from 'react-icons/fi';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Link from 'next/link';
@@ -23,13 +23,14 @@ interface Caption {
 }
 
 const SCALE_LABELS: Record<number, string> = {
-  1: 'didnt get it',
   2: 'not funny at all',
   3: 'not very funny',
   4: 'meh',
   5: 'funny',
   6: 'very funny',
 };
+
+const DIDNT_GET_IT_LABEL = 'didnt get it';
 
 export default function CaptionsList({ 
   initialCaptions, 
@@ -40,7 +41,6 @@ export default function CaptionsList({
   user: any,
   mode?: 'gallery' | 'vote'
 }) {
-  // Only allow voting on captions that have an image
   const votableCaptions = useMemo(() => {
     return initialCaptions.filter(c => c.images?.url);
   }, [initialCaptions]);
@@ -52,22 +52,15 @@ export default function CaptionsList({
     return firstUnvoted === -1 ? votableCaptions.length : firstUnvoted;
   });
   const [voteHistory, setVoteHistory] = useState<{ captionId: string, vote: number }[]>([]);
-  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [sliderValue, setSliderValue] = useState(3);
-  
-  // Swipe State
-  const [dragStart, setDragStart] = useState<{ x: number, y: number } | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [isVoting, setIsVoting] = useState(false);
 
   const currentCaption = captions[currentIndex];
   const isLastCard = currentIndex >= captions.length;
 
-  /** Handles the vote logic and triggers the animation */
+  /** Handles the vote logic */
   const handleVote = async (newValue: number) => {
-    if (!user) return; 
-    if (isAnimating || isLastCard) return;
+    if (!user || isVoting || isLastCard) return;
+    setIsVoting(true);
 
     const captionId = currentCaption.id;
     
@@ -95,38 +88,28 @@ export default function CaptionsList({
 
     if (error) {
       console.error('Voting failed:', error.message);
-      // Revert local state on error
       setCaptions(prev => prev.map(c => c.id === captionId ? { ...c, user_vote: currentCaption.user_vote } : c));
       alert(`Could not save vote: ${error.message}`);
+      setIsVoting(false);
       return;
     }
 
-    // Store in history for undo functionality
     setVoteHistory(prev => [...prev, { captionId, vote: newValue }]);
-
-    // Proceed with animation
-    const direction = newValue >= 5 ? 'right' : newValue <= 3 ? 'left' : 'right'; // Animation direction
-    setExitDirection(direction);
-    setIsAnimating(true);
-
+    
+    // Snappy transition to next card
     setTimeout(() => {
       setCurrentIndex(prev => prev + 1);
-      setExitDirection(null);
-      setIsAnimating(false);
-      setDragOffset({ x: 0, y: 0 });
-      setSliderValue(3); // Reset slider for next card
-    }, 500);
+      setIsVoting(false);
+    }, 150);
   };
 
-  /** Reverses the last action and moves the UI back to show the previous vote */
+  /** Reverses the last action */
   const handleUndo = async () => {
-    if (!user || isAnimating || voteHistory.length === 0) return;
+    if (!user || isVoting || voteHistory.length === 0) return;
 
-    const lastVote = voteHistory[voteHistory.length - 1];
     const prevIndex = currentIndex - 1;
     const captionToUndo = captions[prevIndex];
 
-    // 1. Revert in Database (Delete the vote)
     const { error } = await supabase
       .from('caption_votes')
       .delete()
@@ -135,11 +118,10 @@ export default function CaptionsList({
 
     if (error) {
       console.error('Undo failed:', error.message);
-      alert('Failed to undo vote in database.');
+      alert('Failed to undo vote.');
       return;
     }
 
-    // 2. Update local state
     setCaptions(prev => prev.map(c => {
       if (c.id === captionToUndo.id) {
         return { ...c, user_vote: 0 };
@@ -147,166 +129,91 @@ export default function CaptionsList({
       return c;
     }));
     
-    // 3. Move the index back
     setCurrentIndex(prevIndex);
     setVoteHistory(prev => prev.slice(0, -1));
-    
-    // 4. Visual feedback animation
-    setDragOffset({ x: lastVote.vote >= 5 ? 120 : -120, y: 0 });
-    setIsAnimating(true);
-
-    setTimeout(() => {
-      setDragOffset({ x: 0, y: 0 });
-      setTimeout(() => {
-        setIsAnimating(false);
-      }, 300);
-    }, 800);
   };
 
-  /** Drag/Swipe Event Handlers */
-  const onDragStart = (x: number, y: number) => {
-    if (isAnimating || isLastCard || !user) return;
-    setDragStart({ x, y });
-  };
-
-  const onDragMove = (x: number, y: number) => {
-    if (!dragStart || isAnimating || isLastCard) return;
-    const dx = x - dragStart.x;
-    const dy = y - dragStart.y;
-    setDragOffset({ x: dx, y: dy });
-  };
-
-  const onDragEnd = () => {
-    if (!dragStart || isAnimating || isLastCard) return;
-    const threshold = 150;
-    if (dragOffset.x > threshold) handleVote(6); // Swipe right for "Very funny"
-    else if (dragOffset.x < -threshold) handleVote(1); // Swipe left for "Not funny at all"
-    else setDragOffset({ x: 0, y: 0 });
-    setDragStart(null);
-  };
-
-  const getCardStyle = () => {
-    if (exitDirection === 'right') return { transform: 'translateX(150%) rotate(30deg)', opacity: 0, transition: 'all 0.5s ease-out' };
-    if (exitDirection === 'left') return { transform: 'translateX(-150%) rotate(-30deg)', opacity: 0, transition: 'all 0.5s ease-out' };
-    if (dragStart) {
-      const rotate = dragOffset.x * 0.1;
-      return { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${rotate}deg)`, transition: 'none' };
-    }
-    return { transform: 'translate(0,0) rotate(0)', transition: 'all 0.3s ease-out' };
-  };
-
-  // --- TINDER UI (VOTE MODE) ---
+  // --- STATIC VOTE UI (NO SWIPE, COMPACT) ---
   if (mode === 'vote' && user) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 min-h-[70vh]">
+      <div className="flex flex-col items-center max-w-xl mx-auto space-y-4">
         {!isLastCard ? (
-          <div className="relative w-full max-w-sm h-[500px] perspective-1000">
-            {currentIndex + 1 < captions.length && (
-              <div className="absolute inset-0 scale-95 translate-y-4 opacity-50 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 -z-10" />
-            )}
-
-            <div
-              ref={cardRef}
-              style={getCardStyle()}
-              onMouseDown={(e) => onDragStart(e.clientX, e.clientY)}
-              onMouseMove={(e) => onDragMove(e.clientX, e.clientY)}
-              onMouseUp={onDragEnd}
-              onMouseLeave={onDragEnd}
-              onTouchStart={(e) => onDragStart(e.touches[0].clientX, e.touches[0].clientY)}
-              onTouchMove={(e) => onDragMove(e.touches[0].clientX, e.touches[0].clientY)}
-              onTouchEnd={onDragEnd}
-              className={cn(
-                "absolute inset-0 bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden cursor-grab active:cursor-grabbing select-none flex flex-col",
-                dragOffset.x > 50 && "border-orange-500/50",
-                dragOffset.x < -50 && "border-blue-500/50"
+          <>
+            {/* Image Preview - Compact fixed height to avoid scrolling */}
+            <div className="relative w-full aspect-[16/10] md:h-72 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden flex-shrink-0">
+              {currentCaption.images?.url && (
+                <img 
+                  src={currentCaption.images.url} 
+                  alt="Caption context" 
+                  className="w-full h-full object-cover" 
+                />
               )}
-            >
-              {/* Image Section - Takes 60% of the card height */}
-              <div className="relative h-[60%] w-full bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                {currentCaption.images?.url && (
-                  <img 
-                    src={currentCaption.images.url} 
-                    alt="Context" 
-                    className="w-full h-full object-cover pointer-events-none" 
-                  />
-                )}
-                
-                {/* Swipe Indicators */}
-                {dragOffset.x > 50 && (
-                  <div className="absolute top-10 left-10 border-4 border-orange-500 rounded-lg px-4 py-2 rotate-[-15deg] opacity-80 pointer-events-none z-10 bg-white/10 backdrop-blur-sm">
-                    <span className="text-orange-500 text-3xl font-black uppercase">Funny</span>
-                  </div>
-                )}
-                {dragOffset.x < -50 && (
-                  <div className="absolute top-10 right-10 border-4 border-blue-500 rounded-lg px-4 py-2 rotate-[15deg] opacity-80 pointer-events-none z-10 bg-white/10 backdrop-blur-sm">
-                    <span className="text-blue-500 text-3xl font-black uppercase">Meh</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Content Section - Takes 40% of the card height */}
-              <div className="flex-1 p-6 bg-white dark:bg-gray-900 flex flex-col justify-between overflow-y-auto">
-                <div className="space-y-2">
-                  <p className="text-xl font-bold leading-tight text-gray-800 dark:text-gray-100">
-                    {currentCaption.content || 'Untitled'}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-400 font-bold uppercase tracking-widest pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
-                  <span>{new Date(currentCaption.created_datetime_utc).toLocaleDateString()}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 text-orange-500 font-black">
-                      <FiStar className="fill-current w-3 h-3" />
-                      <span>{currentCaption.avg_score}</span>
-                    </span>
-                    <span className="flex items-center gap-1 text-blue-500 font-black">
-                      <FiMessageSquare className="w-3 h-3" />
-                      <span>{currentCaption.vote_count}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-center space-y-6 py-20 bg-white dark:bg-gray-900 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 w-full max-w-sm px-6">
-            <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white">You've seen them all!</h2>
-            <Link href="/captions" className="flex items-center justify-center gap-2 mx-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold transition-all shadow-lg hover:shadow-blue-500/25">
-              Browse Gallery
-            </Link>
-          </div>
-        )}
 
-        {/* Voting Buttons */}
-        {!isLastCard && (
-          <div className="mt-8 w-full max-w-lg px-4 space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {(Object.entries(SCALE_LABELS) as unknown as [number, string][]).map(([value, label]) => (
+            {/* Caption Content */}
+            <div className="w-full text-center px-4 py-2">
+              <p className="text-xl md:text-2xl font-black text-gray-900 dark:text-white leading-tight">
+                "{currentCaption.content}"
+              </p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">
+                {new Date(currentCaption.created_datetime_utc).toLocaleDateString()}
+              </p>
+            </div>
+
+            {/* Voting Buttons Grid */}
+            <div className="w-full space-y-3 px-4">
+              <div className="flex gap-2 justify-center">
+                {[2, 3, 4, 5, 6].map((val) => (
+                  <button
+                    key={val}
+                    onClick={() => handleVote(val)}
+                    disabled={isVoting}
+                    className="flex-1 py-4 md:py-6 px-1 bg-white dark:bg-gray-900 border-2 border-gray-50 dark:border-gray-800 rounded-2xl hover:border-blue-600 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all active:scale-95 flex flex-col items-center justify-center gap-1 group shadow-sm disabled:opacity-50"
+                  >
+                    <span className="text-[9px] md:text-[10px] font-black text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 uppercase tracking-tighter">
+                      {val === 2 ? 'Not' : val === 6 ? 'Very' : ''}
+                    </span>
+                    <span className="text-xs md:text-sm font-black text-gray-800 dark:text-gray-100 text-center leading-none">
+                      {SCALE_LABELS[val]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex justify-center">
                 <button
-                  key={value}
-                  onClick={() => handleVote(Number(value))}
-                  disabled={isAnimating}
-                  className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-blue-500 dark:hover:border-blue-500 hover:scale-[1.02] active:scale-[0.98] transition-all group disabled:opacity-50"
+                  onClick={() => handleVote(1)}
+                  disabled={isVoting}
+                  className="w-full md:w-2/3 py-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl text-gray-500 dark:text-gray-400 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95 shadow-sm disabled:opacity-50"
                 >
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 group-hover:text-blue-500 transition-colors">
-                    Level {value}
-                  </span>
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-200 text-center leading-tight">
-                    {label}
-                  </span>
+                  {DIDNT_GET_IT_LABEL}
                 </button>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex items-center justify-center pt-2">
-              <button 
-                onClick={handleUndo} 
-                disabled={isAnimating || voteHistory.length === 0} 
-                className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:scale-105 active:scale-95 transition-all text-yellow-600 font-bold text-sm disabled:opacity-30"
-              >
-                <FiRotateCcw className="w-4 h-4 stroke-[3]" /> Undo Last Vote
-              </button>
+              <div className="flex justify-center pt-2">
+                <button 
+                  onClick={handleUndo} 
+                  disabled={isVoting || voteHistory.length === 0} 
+                  className="inline-flex items-center gap-2 text-xs font-black text-gray-400 hover:text-yellow-600 transition-colors disabled:opacity-0"
+                >
+                  <FiRotateCcw className="w-3.5 h-3.5" /> Undo Last Vote
+                </button>
+              </div>
             </div>
+          </>
+        ) : (
+          <div className="text-center space-y-8 py-20 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-gray-800 w-full px-8 shadow-xl shadow-blue-500/5">
+            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-2 animate-bounce">🎉</div>
+            <div className="space-y-2">
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white">All Caught Up!</h2>
+              <p className="text-gray-500 dark:text-gray-400 font-medium">You've ranked all available captions for now.</p>
+            </div>
+            <Link 
+              href="/captions" 
+              className="flex items-center justify-center gap-3 mx-auto px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl font-black transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.02]"
+            >
+              Browse Gallery <FiArrowRight className="w-5 h-5" />
+            </Link>
           </div>
         )}
       </div>
@@ -317,16 +224,16 @@ export default function CaptionsList({
   return (
     <div className="space-y-12">
       {!user && (
-        <div className="bg-blue-600 rounded-3xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-500/20 max-w-4xl mx-auto">
+        <div className="bg-blue-600 rounded-[2.5rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-blue-500/20 max-w-5xl mx-auto">
           <div className="space-y-2 text-center md:text-left">
-            <h2 className="text-2xl font-black flex items-center justify-center md:justify-start gap-2">
-              <FiLock className="w-6 h-6" /> Join the Community
+            <h2 className="text-3xl font-black flex items-center justify-center md:justify-start gap-3">
+              <FiLock className="w-8 h-8" /> Join the Community
             </h2>
-            <p className="text-blue-100 font-medium">Log in to start voting and unlock the discovery experience.</p>
+            <p className="text-blue-100 text-lg font-medium">Log in to start voting and unlock the discovery experience.</p>
           </div>
           <Link 
             href="/auth/login" 
-            className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-black hover:bg-gray-100 transition-all shadow-lg shadow-black/10 flex-shrink-0"
+            className="px-10 py-5 bg-white text-blue-600 rounded-2xl font-black hover:bg-gray-100 transition-all shadow-xl shadow-black/10 flex-shrink-0"
           >
             Log In to Vote
           </Link>
@@ -334,55 +241,50 @@ export default function CaptionsList({
       )}
 
       {user && mode === 'gallery' && (
-        <div className="bg-gray-900 rounded-3xl p-6 text-white flex items-center justify-between gap-6 shadow-xl max-w-4xl mx-auto border border-gray-800">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-2xl">🗳️</div>
+        <div className="bg-gray-900 rounded-[2.5rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl max-w-5xl mx-auto border border-gray-800 overflow-hidden relative group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] pointer-events-none" />
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center text-3xl shadow-xl shadow-blue-600/30 group-hover:scale-110 transition-transform">🗳️</div>
             <div>
-              <h3 className="font-black text-lg">Ready to rank?</h3>
-              <p className="text-gray-400 text-sm font-medium">Help us find the funniest captions of the day.</p>
+              <h3 className="font-black text-2xl mb-1 tracking-tight">Ready to rank?</h3>
+              <p className="text-gray-400 font-medium">Help us find the funniest captions of the day.</p>
             </div>
           </div>
           <Link 
             href="/captions/vote" 
-            className="px-6 py-3 bg-white text-gray-900 rounded-xl font-black hover:bg-gray-100 transition-all flex items-center gap-2"
+            className="px-8 py-4 bg-white text-gray-900 rounded-2xl font-black hover:bg-gray-100 transition-all flex items-center gap-2 relative z-10 shadow-lg"
           >
             Vote Now <FiArrowRight />
           </Link>
         </div>
       )}
 
-      <div className="space-y-6">
-        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-2">Featured Gallery</h3>
-        <div className="columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
+      <div className="space-y-8">
+        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest px-4">Community Curation</h3>
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-8 space-y-8 px-2 md:px-0">
           {captions.map((caption) => (
             <div 
               key={caption.id} 
-              className="break-inside-avoid group flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all overflow-hidden"
+              className="break-inside-avoid group flex flex-col bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-50 dark:border-gray-800 shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden"
             >
               <div className="w-full aspect-[4/5] overflow-hidden bg-gray-100 dark:bg-gray-800">
                 {caption.images?.url && (
                   <img 
                     src={caption.images.url} 
                     alt="Caption context" 
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                   />
                 )}
               </div>
               
-              <div className="p-4 space-y-3">
-                <p className="text-base font-bold text-gray-800 dark:text-gray-200 leading-tight">
+              <div className="p-6 space-y-2 bg-white dark:bg-gray-900">
+                <p className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-snug">
                   {caption.content}
                 </p>
-                <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                  <span>{new Date(caption.created_datetime_utc).toLocaleDateString()}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1 text-orange-500">
-                      <FiStar className="fill-current w-2.5 h-2.5" /> {caption.avg_score}
-                    </span>
-                    <span className="flex items-center gap-1 text-blue-500">
-                      <FiMessageSquare className="w-2.5 h-2.5" /> {caption.vote_count}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-gray-800">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                    {new Date(caption.created_datetime_utc).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             </div>
@@ -390,7 +292,10 @@ export default function CaptionsList({
         </div>
 
         {captions.length === 0 && (
-          <p className="text-center text-gray-500 py-10">No captions with images available yet.</p>
+          <div className="text-center py-20 space-y-4">
+            <div className="text-4xl">🏜️</div>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">No captions available yet.</p>
+          </div>
         )}
       </div>
     </div>
