@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const maxDuration = 60; // Increase timeout for long-running AI tasks
+
 const BASE_URL = 'https://api.almostcrackd.ai/pipeline';
 const AUTH_TOKEN = process.env.ALMOSTCRACKD_TOKEN;
 
@@ -35,11 +37,30 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
-    if (!response.ok) return NextResponse.json(data, { status: response.status });
+    // Handle non-JSON responses (like upstream 502/504 HTML pages)
+    const contentType = response.headers.get('content-type');
+    let data;
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      data = { error: text.slice(0, 100) || 'Upstream service error (No JSON response)' };
+    }
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.error || data.message || `API error: ${response.status}` },
+        { status: response.status === 502 ? 502 : response.status }
+      );
+    }
 
     return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Pipeline API Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

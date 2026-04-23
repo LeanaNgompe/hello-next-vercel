@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { PipelineService } from '@/lib/pipeline/service';
-import { PipelineStatus, CaptionRecord, PipelineState } from '@/lib/pipeline/types';
+import { PipelineState } from '@/lib/pipeline/types';
 
 export function useCaptionPipeline() {
   const [state, setState] = useState<PipelineState>({
@@ -36,12 +36,17 @@ export function useCaptionPipeline() {
       setState(s => ({ ...s, status: 'generating', progress: 85 }));
       const captions = await PipelineService.generateCaptions(imageId);
 
+      if (!Array.isArray(captions)) {
+        throw new Error('API returned invalid caption format');
+      }
+
       setState(s => ({ ...s, status: 'success', progress: 100, captions }));
     } catch (err: any) {
+      console.error('Pipeline Hook Error:', err);
       setState(s => ({ 
         ...s, 
         status: 'error', 
-        error: err.message || 'An unexpected error occurred' 
+        error: typeof err.error === 'string' ? err.error : (err.message || 'An unexpected error occurred')
       }));
     }
   };

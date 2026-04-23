@@ -4,15 +4,18 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
-import { FiGrid, FiThumbsUp, FiPlusCircle, FiLogOut, FiLogIn, FiMenu, FiX } from 'react-icons/fi';
+import { FiGrid, FiThumbsUp, FiPlusCircle, FiLogOut, FiMenu, FiX } from 'react-icons/fi';
+import { cn } from '@/lib/utils';
 
 export default function Sidebar() {
   const [user, setUser] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
+    setMounted(true);
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         const user = session?.user ?? null;
@@ -76,7 +79,9 @@ export default function Sidebar() {
         <nav className="flex-1 px-6 pt-10 space-y-6">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
-            if (link.authRequired && !user) return null;
+            
+            // Hydration safe auth check
+            if (link.authRequired && (!mounted || !user)) return null;
 
             return (
               <Link 
@@ -97,7 +102,7 @@ export default function Sidebar() {
         </nav>
 
         <div className="p-8 border-t border-[#2B2B2B] space-y-4">
-          {user ? (
+          {mounted && user ? (
             <div className="space-y-4">
               <div className="text-[10px] font-bold text-[#8C8C8C] tracking-widest uppercase">
                 {user.email?.split('@')[0]}
@@ -109,7 +114,7 @@ export default function Sidebar() {
                 <FiLogOut className="w-3 h-3" /> Logout
               </button>
             </div>
-          ) : (
+          ) : mounted ? (
             <Link 
               href="/auth/login" 
               onClick={() => setIsOpen(false)}
@@ -117,13 +122,11 @@ export default function Sidebar() {
             >
               Sign In
             </Link>
+          ) : (
+            <div className="h-10 bg-[#2B2B2B]/5 animate-pulse rounded-sm" />
           )}
         </div>
       </aside>
     </>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }
